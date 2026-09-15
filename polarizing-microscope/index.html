@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>편광현미경 3D 시뮬레이터 v8</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f1ea; --panel:#ffffff; --panel2:#efece2; --line:#ddd6c6;
+    --ink:#2a2d33; --muted:#6d7480; --brass:#a07c2e;
+    --ml:linear-gradient(90deg,#000 0%,#8a8a90 8%,#e8e8e8 15%,#f0e696 22%,#f5aa3c 30%,#e6463c 38%,#b432a0 45%,#5050dc 52%,#3c96dc 60%,#46b48c 67%,#96c850 74%,#d2d24a 80%,#f0b446 86%,#e17864 92%,#c86ea0 100%);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',system-ui,sans-serif;font-size:15px;line-height:1.55}
+  header{padding:18px 16px 0}
+  header h1{font-family:'Noto Serif KR',serif;font-weight:700;font-size:1.35rem;letter-spacing:-.01em}
+  header p{color:var(--muted);font-size:.85rem;margin-top:2px}
+  .spectrum{height:4px;border-radius:2px;background:var(--ml);margin:12px 0 0}
+  nav{display:flex;gap:6px;padding:12px 16px;position:sticky;top:0;background:linear-gradient(var(--bg) 80%,transparent);z-index:30}
+  nav button{flex:1;padding:9px 4px;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:8px;font-size:.88rem;font-family:inherit;cursor:pointer}
+  nav button.on{color:var(--ink);border-color:var(--brass);background:var(--panel2)}
+  main{padding:0 16px 48px;max-width:980px;margin:0 auto}
+  section{display:none}section.on{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+  .card h2{font-family:'Noto Serif KR',serif;font-size:1.02rem;margin-bottom:8px;color:var(--brass)}
+  .card h3{font-size:.92rem;margin:10px 0 4px}
+  .card p,.card li{font-size:.88rem}
+  .card .dim{color:var(--muted)}
+  /* ---- 조작 패널 ---- */
+  .ctlPanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;margin-top:12px}
+  .pgroup{padding:10px 0 12px;border-bottom:1px dashed var(--line)}
+  .pgroup:last-child{border-bottom:none;padding-bottom:2px}
+  .pgroup h4{font-size:.78rem;color:var(--brass);letter-spacing:.06em;margin-bottom:8px;font-weight:700}
+  .tip{color:var(--muted);font-size:.74rem;margin-top:6px}
+  .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:1}
+  .seg button{flex:1;padding:9px 2px;background:var(--panel);border:none;color:var(--muted);font-family:inherit;font-size:.84rem;cursor:pointer}
+  .seg button.on{background:var(--panel2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--brass)}
+  .tgl{flex:1;padding:9px 4px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);font-family:inherit;font-size:.83rem;cursor:pointer}
+  .tgl.on{border-color:var(--brass);color:var(--brass);background:var(--panel2)}
+  select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-family:inherit;font-size:.9rem;flex:1;width:100%}
+  .dialRow{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .dialRow label{font-size:.8rem;color:var(--muted);white-space:nowrap;min-width:44px}
+  input[type=range]{flex:1;appearance:none;height:9px;border-radius:5px;background:var(--panel2);outline:none;border:1px solid var(--line)}
+  input[type=range].ml{background:var(--ml);border:none;height:10px}
+  input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--bg);box-shadow:0 0 0 1.5px var(--brass);cursor:pointer}
+  .deg{font-variant-numeric:tabular-nums;min-width:44px;text-align:right;font-weight:700;font-size:.9rem}
+  .play{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--brass);background:var(--panel);color:var(--brass);font-size:1rem;cursor:pointer;flex-shrink:0}
+  /* ---- 3D ---- */
+  #stage3d{position:relative;height:56vh;min-height:340px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 25%,#ffffff,#d9d3c3 78%);margin-top:12px;touch-action:none}
+  #stage3d canvas{display:block}
+  .dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(255,255,255,.94);border:1.5px solid var(--brass);color:var(--brass);font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:transform .12s}
+  .dot.sel{background:var(--brass);color:#fff;transform:scale(1.25)}
+  .hint3d{position:absolute;left:10px;bottom:8px;color:var(--muted);font-size:.72rem;pointer-events:none}
+  #partInfo{min-height:70px}
+  #partInfo b{color:var(--brass)}
+  .partList{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-top:8px}
+  .partList button{text-align:left;background:none;border:none;color:var(--muted);font-family:inherit;font-size:.82rem;padding:3px 0;cursor:pointer}
+  .partList button.sel{color:var(--brass)}
+  .partList b{color:var(--ink);font-weight:500}
+  /* ---- 관찰 ---- */
+  .scopeWrap{display:flex;flex-direction:column;margin-top:12px;gap:0}
+  .scopeLeft{display:flex;flex-direction:column;align-items:center}
+  #ocular{width:min(82vw,360px);height:min(82vw,360px);border-radius:50%;background:#000;touch-action:none;cursor:grab;
+    box-shadow:0 0 0 8px #14161a,0 0 0 10px #4a5160,0 0 0 11px #2a2e36,0 14px 34px rgba(40,35,20,.35),inset 0 0 40px rgba(0,0,0,.9)}
+  .statusLine{color:var(--muted);font-size:.76rem;margin-top:14px;text-align:center;min-height:1.2em}
+  #obsNote{font-size:.85rem;color:var(--muted);margin-top:12px}
+  #obsNote b{color:var(--ink);font-weight:500}
+  .ext{display:inline-block;padding:1px 8px;border-radius:20px;font-size:.75rem;border:1px solid var(--line);color:var(--muted);margin-left:6px;margin-top:4px}
+  .ext.on{border-color:var(--brass);color:var(--brass)}
+  @media(min-width:760px){
+    .scopeWrap{flex-direction:row;align-items:flex-start;gap:16px}
+    .scopeLeft{flex:0 0 auto;position:sticky;top:70px}
+    .scopeSide{flex:1;min-width:0}
+    .scopeSide .ctlPanel{margin-top:0}
+    #t3d .split{display:flex;gap:16px;align-items:flex-start}
+    #t3d .split #stage3d{flex:1.2;height:70vh}
+    #t3d .split .sideCol{flex:1;min-width:300px}
+    #t3d .split .sideCol .ctlPanel{margin-top:12px}
+  }
+  ol.steps{counter-reset:s;list-style:none;margin-top:4px}
+  ol.steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px solid var(--line)}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:2px;top:12px;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--brass);color:var(--brass);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
+  ol.steps b{color:var(--ink)}
+  ol.steps p{color:var(--muted);font-size:.84rem;margin-top:2px}
+  .mlBar{height:26px;border-radius:6px;background:var(--ml);margin:8px 0 4px}
+  .mlLbl{display:flex;justify-content:space-between;color:var(--muted);font-size:.7rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>편광현미경 3D 시뮬레이터</h1>
+  <p>모든 구동부 조작 가능 — v8</p>
+  <div class="spectrum"></div>
+</header>
+
+<nav>
+  <button class="on" data-tab="t3d">3D 구조</button>
+  <button data-tab="tobs">박편 관찰</button>
+  <button data-tab="thow">사용법</button>
+</nav>
+
+<main>
+<!-- ================= 3D ================= -->
+<section id="t3d" class="on">
+  <div class="split">
+    <div id="stage3d"><div class="hint3d">드래그: 시점 회전 · 휠/두 손가락: 확대</div></div>
+    <div class="sideCol">
+      <div class="card" id="partInfo"><p class="dim">번호를 눌러 각 부분의 명칭과 역할을 확인하세요. 아래 패널을 조작하면 3D 모형이 실제처럼 움직입니다.</p></div>
+      <div class="ctlPanel" id="panel3d"></div>
+    </div>
+  </div>
+  <div class="card"><h2>부분 명칭</h2><div class="partList" id="partList"></div></div>
+</section>
+
+<!-- ================= 관찰 ================= -->
+<section id="tobs">
+  <div class="scopeWrap">
+    <div class="scopeLeft">
+      <canvas id="ocular" width="680" height="680"></canvas>
+      <p class="statusLine" id="statusLine"></p>
+    </div>
+    <div class="scopeSide">
+      <div class="ctlPanel">
+        <div class="pgroup"><h4>박편 선택</h4>
+          <select id="mineral">
+            <optgroup label="암석 박편">
+              <option value="grn" selected>화강암 Granite (조립질·등립상)</option>
+              <option value="bas">현무암 Basalt (반상 조직)</option>
+            </optgroup>
+            <optgroup label="단일 광물">
+              <option value="qtz">석영 Quartz</option>
+              <option value="plg">사장석 Plagioclase (알바이트 쌍정)</option>
+              <option value="bio">흑운모 Biotite (다색성)</option>
+              <option value="hbl">각섬석 Hornblende</option>
+              <option value="olv">감람석 Olivine</option>
+              <option value="grt">석류석 Garnet (등방성)</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="ctlPanel" id="panelObs" style="margin-top:12px"></div>
+      <div class="card"><p id="obsNote"></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 사용법 ================= -->
+<section id="thow">
+  <div class="card">
+    <h2>관찰 순서</h2>
+    <ol class="steps">
+      <li><b>광원을 켜고 밝기를 조절한다</b><p>하부 편광판(편광자)은 항상 광로에 들어 있다 — 보통 진동 방향은 동–서(E–W).</p></li>
+      <li><b>박편을 재물대에 올리고 클립으로 고정한다</b><p>박편 두께는 표준 0.03 mm(30 µm). 커버글라스가 위로 오게 놓는다.</p></li>
+      <li><b>저배율(4×) 대물렌즈로 초점을 맞춘다</b><p>조동나사로 대강 → 미동나사로 정밀하게. 배율을 올릴 땐 회전판만 돌린다.</p></li>
+      <li><b>개방 니콜(PPL)에서 관찰한다 — 검광판 제거</b><p>광물 고유의 색, 다색성(재물대 회전 시 색 변화), 형태, 벽개, 굴절률 차이에 따른 돌출(relief)을 본다.</p></li>
+      <li><b>검광판을 밀어 넣어 직교 니콜(XPL)로 바꾼다</b><p>두 편광판이 90°로 교차 → 시료가 없으면 시야가 완전히 검게 된다. 광물은 간섭색을 낸다.</p></li>
+      <li><b>재물대를 돌리며 소광을 관찰한다</b><p>비등방성 광물은 360° 회전 동안 90°마다 4번 어두워진다(소광). 십자선과 벽개가 이루는 각 = 소광각.</p></li>
+      <li><b>석고판(λ판)을 끼워 색 변화를 본다</b><p>530 nm가 더해지거나 빠지면서 회색 광물이 청색/황색으로 갈라진다 — 광학 방위 판정에 사용.</p></li>
+      <li><b>40×에서 베르트랑 렌즈로 간섭상을 본다</b><p>콘오스코프 관찰: 검은 십자(아이소자이어)와 색 고리. 일축성/이축성, 광학적 부호(+/−) 판정.</p></li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>간섭색 (미셸-레비 색표)</h2>
+    <div class="mlBar"></div>
+    <div class="mlLbl"><span>0 nm</span><span>550 (1차 적)</span><span>1100</span><span>1650 nm</span></div>
+    <p class="dim" style="margin-top:8px">간섭색은 복굴절 × 박편 두께(광로차)로 결정됩니다. 석고판을 넣으면 모든 광로차에 530 nm이 더해지거나 빠져 색이 이동합니다.</p>
+  </div>
+  <div class="card">
+    <h2>개방 니콜 vs 직교 니콜</h2>
+    <h3>개방 니콜 (PPL, 검광판 없음)</h3>
+    <p class="dim">고유색·다색성·형태·벽개·돌출 관찰. 시야가 밝다.</p>
+    <h3>직교 니콜 (XPL, 검광판 삽입)</h3>
+    <p class="dim">간섭색·소광·쌍정 관찰. 편광자를 회전해 십자를 풀면 시야가 점점 밝아진다. 등방성 광물(석류석 등)과 유리는 항상 검게 보인다.</p>
+  </div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===================== 상태 ===================== */
+const state={analyzer:0,theta:20,mineral:'grn',polRot:0,light:1,obj:1,focus:0,bertrand:0,plate:0};
+const MAGS=[1,2.5,10],MAGL=['4×','10×','40×'];   // 실제 시야비: 4×≈4.5mm, 10×≈1.8mm, 40×≈0.45mm
+
+/* ===================== 조작 패널 (양쪽 탭에 동일 삽입) ===================== */
+const PANEL=`
+<div class="pgroup"><h4>재물대 (회전)</h4>
+  <div class="dialRow"><button class="play" data-c="play">▶</button>
+    <input type="range" class="ml" data-c="rot" min="0" max="360" step="1">
+    <span class="deg" data-c="deg">0°</span></div>
+  <p class="tip">접안 시야를 좌우로 드래그해도 재물대가 돌아갑니다</p>
+</div>
+<div class="pgroup"><h4>편광 광학계</h4>
+  <div class="seg"><button data-c="an0">개방 니콜<br>검광판 없음</button><button data-c="an1">직교 니콜<br>검광판 삽입</button></div>
+  <div class="dialRow"><label>편광자</label><input type="range" data-c="pol" min="0" max="90" step="1"><span class="deg" data-c="poldeg">0°</span></div>
+  <p class="tip">0° = 검광판과 직교. 돌릴수록 십자가 풀려 시야가 밝아집니다</p>
+  <div class="row"><button class="tgl" data-c="plate">석고판 λ (530nm)</button><button class="tgl" data-c="bert">베르트랑 렌즈</button></div>
+</div>
+<div class="pgroup"><h4>대물렌즈 · 초점 · 조명</h4>
+  <div class="seg"><button data-c="ob0">4×</button><button data-c="ob1">10×</button><button data-c="ob2">40×</button></div>
+  <p class="tip">시야 지름: 4× ≈ 4.5mm · 10× ≈ 1.8mm · 40× ≈ 0.45mm (실제 비율)</p>
+  <div class="dialRow"><label>초점</label><input type="range" data-c="foc" min="-100" max="100" step="1"></div>
+  <div class="dialRow"><label>광원</label><input type="range" data-c="lgt" min="15" max="100" step="1"></div>
+</div>`;
+document.getElementById('panel3d').innerHTML=PANEL;
+document.getElementById('panelObs').innerHTML=PANEL;
+const qsa=s=>[...document.querySelectorAll(s)];
+
+function syncUI(){
+  qsa('[data-c="rot"]').forEach(e=>e.value=state.theta);
+  qsa('[data-c="deg"]').forEach(e=>e.textContent=Math.round(state.theta)+'°');
+  qsa('[data-c="pol"]').forEach(e=>e.value=state.polRot);
+  qsa('[data-c="poldeg"]').forEach(e=>e.textContent=Math.round(state.polRot)+'°');
+  qsa('[data-c="an0"]').forEach(e=>e.classList.toggle('on',state.analyzer===0));
+  qsa('[data-c="an1"]').forEach(e=>e.classList.toggle('on',state.analyzer===1));
+  for(let i=0;i<3;i++)qsa('[data-c="ob'+i+'"]').forEach(e=>e.classList.toggle('on',state.obj===i));
+  qsa('[data-c="foc"]').forEach(e=>e.value=state.focus);
+  qsa('[data-c="lgt"]').forEach(e=>e.value=state.light*100);
+  qsa('[data-c="plate"]').forEach(e=>e.classList.toggle('on',!!state.plate));
+  qsa('[data-c="bert"]').forEach(e=>e.classList.toggle('on',!!state.bertrand));
+  qsa('[data-c="play"]').forEach(e=>e.textContent=playing?'⏸':'▶');
+  const st=document.getElementById('statusLine');
+  st.textContent=`${MAGL[state.obj]} · ${state.analyzer?'직교':'개방'} 니콜`+
+    (state.plate?' · λ판':'')+(state.bertrand?' · 베르트랑':'')+
+    (state.polRot>0?` · 편광자 ${Math.round(state.polRot)}°`:'');
+}
+function upd(){syncUI();renderView();updateNote();}
+qsa('[data-c="rot"]').forEach(e=>e.oninput=()=>{state.theta=+e.value;upd()});
+qsa('[data-c="pol"]').forEach(e=>e.oninput=()=>{state.polRot=+e.value;upd()});
+qsa('[data-c="an0"]').forEach(e=>e.onclick=()=>{state.analyzer=0;upd()});
+qsa('[data-c="an1"]').forEach(e=>e.onclick=()=>{state.analyzer=1;upd()});
+for(let i=0;i<3;i++)qsa('[data-c="ob'+i+'"]').forEach(e=>e.onclick=()=>{state.obj=i;valid=false;upd()});
+qsa('[data-c="foc"]').forEach(e=>e.oninput=()=>{state.focus=+e.value;upd()});
+qsa('[data-c="lgt"]').forEach(e=>e.oninput=()=>{state.light=+e.value/100;upd()});
+qsa('[data-c="plate"]').forEach(e=>e.onclick=()=>{state.plate=state.plate?0:1;upd()});
+qsa('[data-c="bert"]').forEach(e=>e.onclick=()=>{state.bertrand=state.bertrand?0:1;upd()});
+let playing=false,pt=null;
+qsa('[data-c="play"]').forEach(e=>e.onclick=()=>{playing=!playing;syncUI();
+  if(playing){pt=performance.now();requestAnimationFrame(spin)}});
+function spin(t){if(!playing)return;const dt=t-pt;pt=t;
+  state.theta=(state.theta+dt*.028)%360;upd();requestAnimationFrame(spin);}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('main section').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');document.getElementById(b.dataset.tab).classList.add('on');
+  if(b.dataset.tab==='t3d')resize3d();
+});
+
+/* ===================== 3D 현미경 ===================== */
+const wrap=document.getElementById('stage3d');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+renderer.outputEncoding=THREE.sRGBEncoding;
+wrap.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,1,.1,100);
+const envScene=new THREE.Scene();envScene.background=new THREE.Color(0xd8d3c6);
+function envPanel(w,h,x,y,z,rx,ry,c){const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:c}));
+  p.position.set(x,y,z);p.rotation.set(rx,ry,0);envScene.add(p);}
+envPanel(8,4,0,6,0,Math.PI/2,0,0xfff4e0);
+envPanel(5,6,-7,3,0,0,Math.PI/2,0x6d84a8);
+envPanel(5,6,7,3,0,0,-Math.PI/2,0xd8c9a8);
+envPanel(10,3,0,2,-8,0,0,0x39424f);
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(envScene,.04).texture;
+scene.add(new THREE.AmbientLight(0xffffff,.28));
+const key=new THREE.DirectionalLight(0xfff0dc,1.15);key.position.set(4.5,8,5);
+key.castShadow=true;key.shadow.mapSize.set(1024,1024);
+key.shadow.camera.left=-4;key.shadow.camera.right=4;key.shadow.camera.top=6;key.shadow.camera.bottom=-2;
+scene.add(key);
+const fill=new THREE.DirectionalLight(0x8fa8d8,.4);fill.position.set(-5,3,-4);scene.add(fill);
+const root=new THREE.Group();scene.add(root);
+const M={
+ body:new THREE.MeshStandardMaterial({color:0x23262c,roughness:.42,metalness:.75}),
+ chrome:new THREE.MeshStandardMaterial({color:0x9aa2ad,roughness:.18,metalness:1}),
+ brass:new THREE.MeshStandardMaterial({color:0xb5903f,roughness:.28,metalness:1}),
+ blackM:new THREE.MeshStandardMaterial({color:0x121417,roughness:.5,metalness:.6}),
+ rubber:new THREE.MeshStandardMaterial({color:0x1a1c1f,roughness:.9,metalness:.05}),
+ glass:new THREE.MeshPhysicalMaterial({color:0xcfe4f0,roughness:.05,metalness:0,transparent:true,opacity:.5}),
+ slide:new THREE.MeshStandardMaterial({color:0xe4ebe0,roughness:.25,metalness:0})};
+const glowMat=new THREE.MeshBasicMaterial({color:0xfff3c4});
+function sh(o){o.castShadow=true;o.receiveShadow=true;return o}
+function box(w,h,d,m,x,y,z,g){const o=sh(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m));o.position.set(x,y,z);(g||root).add(o);return o}
+function cyl(rt,rb,h,m,x,y,z,g,seg){const o=sh(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||48),m));o.position.set(x,y,z);(g||root).add(o);return o}
+const AX=.55;
+const ground=new THREE.Mesh(new THREE.CircleGeometry(7,48),new THREE.ShadowMaterial({opacity:.35}));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+box(3.4,.42,2.4,M.body,-.25,.21,0);
+box(2.9,.2,2.0,M.body,-.25,.5,0);
+const armCurve=new THREE.CatmullRomCurve3([
+  new THREE.Vector3(-1.35,.5,0),new THREE.Vector3(-1.62,1.6,0),
+  new THREE.Vector3(-1.62,3.0,0),new THREE.Vector3(-1.25,3.95,0),
+  new THREE.Vector3(-.35,4.28,0),new THREE.Vector3(AX,4.3,0)]);
+root.add(sh(new THREE.Mesh(new THREE.TubeGeometry(armCurve,40,.24,20),M.body)));
+cyl(.6,.68,.42,M.body,AX,.72,0);
+const glow=cyl(.42,.42,.06,glowMat,AX,.95,0);
+cyl(.46,.46,.05,M.chrome,AX,.91,0);
+const polGrp=new THREE.Group();polGrp.position.set(AX,1.2,0);root.add(polGrp);
+cyl(.5,.5,.14,M.blackM,0,0,0,polGrp);cyl(.42,.42,.15,M.glass,0,.01,0,polGrp);
+box(.16,.08,.3,M.brass,.56,0,0,polGrp);
+cyl(.3,.44,.34,M.chrome,AX,1.52,0);
+const stTex=(()=>{const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+  x.fillStyle='#26292f';x.fillRect(0,0,512,512);
+  x.translate(256,256);x.strokeStyle='#cfd4dc';x.fillStyle='#cfd4dc';
+  x.textAlign='center';x.font='bold 26px sans-serif';
+  for(let i=0;i<72;i++){const a=i/72*Math.PI*2,l=i%9===0?26:14;
+    x.lineWidth=i%9===0?4:2;x.beginPath();
+    x.moveTo(Math.cos(a)*236,Math.sin(a)*236);x.lineTo(Math.cos(a)*(236-l),Math.sin(a)*(236-l));x.stroke();}
+  [0,90,180,270].forEach(d=>{const a=-d*Math.PI/180;x.fillText(d,Math.cos(a)*180,Math.sin(a)*180+9);});
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t})();
+const stageGrp=new THREE.Group();stageGrp.position.set(AX,1.88,0);root.add(stageGrp);
+const stTop=new THREE.MeshStandardMaterial({map:stTex,roughness:.5,metalness:.4});
+stageGrp.add(sh(new THREE.Mesh(new THREE.CylinderGeometry(1.18,1.18,.14,64),[M.blackM,stTop,M.blackM])));
+for(let i=0;i<48;i++){const a=i/48*Math.PI*2;
+  const k=box(.05,.13,.05,M.body,Math.cos(a)*1.18,0,Math.sin(a)*1.18,stageGrp);k.rotation.y=-a;}
+box(.92,.05,.56,M.slide,0,.11,0,stageGrp);
+box(.52,.03,.3,new THREE.MeshPhysicalMaterial({color:0x9fb5a0,roughness:.15,transparent:true,opacity:.85}),0,.145,0,stageGrp);
+box(.5,.05,.1,M.chrome,0,.13,.38,stageGrp);box(.5,.05,.1,M.chrome,0,.13,-.38,stageGrp);
+/* 대물렌즈 회전판: 선택 시 실제로 회전 */
+const noseGrp=new THREE.Group();noseGrp.position.set(AX,2.66,0);root.add(noseGrp);
+cyl(.52,.44,.18,M.body,0,0,0,noseGrp);
+[[.17,.36,0xffd23c],[.14,.52,0x3c78ff],[.12,.68,0xffffff]].forEach((o,i)=>{
+  const a=i*Math.PI*2/3;const ox=Math.cos(a)*.3,oz=Math.sin(a)*.3;
+  cyl(o[0],o[0]+.03,o[1],M.chrome,ox,-o[1]/2-.05,oz,noseGrp);
+  cyl(o[0]+.012,o[0]+.012,.07,new THREE.MeshStandardMaterial({color:o[2],roughness:.4}),ox,-o[1]+.07,oz,noseGrp);});
+cyl(.3,.34,1.5,M.body,AX,3.52,0);
+const anGrp=new THREE.Group();anGrp.position.set(AX,3.32,0);root.add(anGrp);
+const anSlider=box(.52,.13,.28,M.brass,.58,0,0,anGrp);
+const anKnob=box(.1,.17,.32,M.rubber,.84,0,0,anGrp);
+const bkn=cyl(.14,.14,.3,M.brass,0,0,0,null,24);bkn.position.set(AX+.36,3.85,0);bkn.rotation.z=Math.PI/2;
+cyl(.27,.31,.4,M.blackM,AX,4.5,0);
+cyl(.24,.24,.1,M.rubber,AX,4.72,0);
+cyl(.2,.2,.05,M.glass,AX,4.78,0);
+const kn1=cyl(.32,.32,.26,M.body,0,0,0,null,36);kn1.position.set(-1.62,1.85,.5);kn1.rotation.x=Math.PI/2;
+const knC=cyl(.33,.33,.05,M.chrome,0,0,0,null,36);knC.position.set(-1.62,1.85,.64);knC.rotation.x=Math.PI/2;
+const kn2=cyl(.17,.17,.3,M.brass,0,0,0,null,28);kn2.position.set(-1.62,1.85,.82);kn2.rotation.x=Math.PI/2;
+
+const PARTS=[
+ ['접안렌즈','상을 확대해 눈으로 보게 하는 렌즈. 내부에 십자선이 있어 소광각 측정의 기준이 된다.',[AX,4.85,0]],
+ ['경통','접안렌즈와 대물렌즈를 잇는 통. 빛의 통로.',[AX,3.7,.34]],
+ ['검광판 (상부 편광판)','필요할 때 밀어 넣는 두 번째 편광판. 편광자와 90° 교차 → 직교 니콜(XPL). 패널에서 넣고 뺄 수 있다.',[AX+.9,3.32,0]],
+ ['베르트랑 렌즈','간섭상(콘오스코프) 관찰용 보조 렌즈. 40×·직교 니콜에서 켜면 검은 십자와 색 고리가 보인다.',[AX+.55,3.85,0]],
+ ['대물렌즈·회전판','4×/10×/40× 렌즈가 회전판에 달려 있다. 패널에서 배율을 고르면 회전판이 돌아간다.',[AX+.25,2.35,.38]],
+ ['회전 재물대','360° 눈금이 새겨진 원형 재물대. 패널 슬라이더나 시야 드래그로 회전.',[AX+1.18,1.95,0]],
+ ['박편 (시료)','암석을 0.03 mm 두께로 갈아 유리에 붙인 표본.',[AX,2.1,.36]],
+ ['집광렌즈 (콘덴서)','빛을 시료에 모아 주는 렌즈.',[AX-.42,1.52,.2]],
+ ['하부 편광판 (편광자)','광원 위에 항상 놓인 편광판. 패널에서 회전시키면 직교가 풀려 시야가 밝아진다.',[AX-.55,1.2,.2]],
+ ['광원','시료를 비추는 조명. 패널의 광원 슬라이더로 밝기 조절.',[AX,.72,.6]],
+ ['조동·미동 나사','재물대를 올리고 내려 초점을 맞춘다. 패널의 초점 슬라이더와 연동 — 가운데가 초점.',[-1.62,1.85,.95]],
+ ['받침·팔','현미경을 지지하는 몸체. 운반할 때는 팔을 잡는다.',[-1.62,3.2,.3]]];
+const dots=PARTS.map((p,i)=>{const d=document.createElement('div');d.className='dot';d.textContent=i+1;
+  d.addEventListener('pointerdown',ev=>ev.stopPropagation());
+  d.onclick=()=>selectPart(i);wrap.appendChild(d);return d;});
+const listEl=document.getElementById('partList');
+PARTS.forEach((p,i)=>{const b=document.createElement('button');b.innerHTML=`${i+1}. <b>${p[0]}</b>`;
+  b.onclick=()=>selectPart(i);listEl.appendChild(b);});
+function selectPart(i){
+  document.getElementById('partInfo').innerHTML=`<p><b>${i+1}. ${PARTS[i][0]}</b></p><p class="dim">${PARTS[i][1]}</p>`;
+  dots.forEach((d,j)=>d.classList.toggle('sel',j===i));
+  listEl.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('sel',j===i));}
+
+let camTheta=.6,camPhi=1.15,camR=11,drag=null,pinch=0;
+function applyCam(){camera.position.set(Math.sin(camTheta)*Math.sin(camPhi)*camR,2.5+Math.cos(camPhi)*camR,Math.cos(camTheta)*Math.sin(camPhi)*camR);camera.lookAt(0,2.4,0);}
+wrap.addEventListener('pointerdown',e=>{if(e.target.classList&&e.target.classList.contains('dot'))return; // 번호 배지는 캡처 제외
+  drag={x:e.clientX,y:e.clientY};wrap.setPointerCapture(e.pointerId)});
+wrap.addEventListener('pointermove',e=>{if(!drag)return;
+  camTheta-=(e.clientX-drag.x)*.008;camPhi=Math.min(1.9,Math.max(.35,camPhi-(e.clientY-drag.y)*.006));
+  drag={x:e.clientX,y:e.clientY};});
+wrap.addEventListener('pointerup',()=>drag=null);
+wrap.addEventListener('wheel',e=>{e.preventDefault();camR=Math.min(20,Math.max(6,camR+e.deltaY*.01))},{passive:false});
+wrap.addEventListener('touchmove',e=>{if(e.touches.length===2){e.preventDefault();
+  const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  if(pinch)camR=Math.min(20,Math.max(6,camR*(pinch/d)));pinch=d;drag=null;}},{passive:false});
+wrap.addEventListener('touchend',()=>pinch=0);
+function resize3d(){const w=wrap.clientWidth,h=wrap.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize3d);resize3d();
+
+let anPos=.58,noseRot=-Math.PI*2/3;const v3=new THREE.Vector3();
+(function loop(){requestAnimationFrame(loop);
+  stageGrp.rotation.y=-state.theta*Math.PI/180;
+  stageGrp.position.y=1.88+state.focus*.0022;                 // 초점 나사 → 재물대 승강
+  polGrp.rotation.y=-state.polRot*Math.PI/180;                // 편광자 회전
+  glowMat.color.setRGB(state.light,state.light*.95,state.light*.77); // 광원 밝기
+  kn1.rotation.y=state.focus*.05;kn2.rotation.y=state.focus*.12;
+  bkn.rotation.x+= (state.bertrand? .05:0);
+  const nt=-state.obj*Math.PI*2/3-Math.PI*2/3;                // 대물렌즈 회전판
+  noseRot+=(nt-noseRot)*.12;noseGrp.rotation.y=noseRot;
+  const target=state.analyzer?.1:.58;anPos+=(target-anPos)*.15;
+  anSlider.position.x=anPos;anKnob.position.x=anPos+.26;
+  applyCam();renderer.render(scene,camera);
+  const w=wrap.clientWidth,h=wrap.clientHeight;
+  PARTS.forEach((p,i)=>{v3.set(...p[2]).project(camera);
+    const sx=(v3.x*.5+.5)*w,sy=(-v3.y*.5+.5)*h;
+    const vis=v3.z<1&&sx>0&&sx<w&&sy>0&&sy<h;
+    dots[i].style.display=vis?'flex':'none';dots[i].style.left=sx+'px';dots[i].style.top=sy+'px';});
+})();
+
+/* ===================== 박편 렌더링 엔진 ===================== */
+const N=340,NN=N*N;
+let th0Map,mlR,mlG,mlB,retMap,maskMap,shadeX,shadeP,pAr,pAg,pAb,pBr,pBg,pBb,valid=false;
+const SP={
+ qtz:{ret:[140,330],und:.55,pA:[241,242,244],pB:[241,242,244],twin:0,cleav:0,frac:0,relief:.05,dust:.004},
+ plg:{ret:[80,230],und:.1,pA:[239,240,237],pB:[239,240,237],twin:1,cleav:0,frac:0,relief:.05,dust:.003},
+ kfs:{ret:[60,170],und:.08,pA:[228,224,214],pB:[228,224,214],twin:0,cleav:0,frac:0,relief:.04,dust:.05},
+ bio:{ret:[900,1400],und:.08,pA:[224,196,110],pB:[74,46,20],twin:0,cleav:1,ca:0,frac:0,relief:.1,dust:0,mask:[122,82,42]},
+ hbl:{ret:[350,750],und:.12,pA:[150,186,120],pB:[42,84,52],twin:0,cleav:2,ca:56,frac:0,relief:.13,dust:0},
+ cpx:{ret:[500,900],und:.1,pA:[207,197,177],pB:[188,176,154],twin:0,cleav:2,ca:87,frac:0,relief:.16,dust:0},
+ olv:{ret:[600,1200],und:.15,pA:[233,241,227],pB:[221,235,215],twin:0,cleav:0,frac:1,relief:.2,dust:0},
+ grt:{ret:[0,0],und:0,pA:[234,216,206],pB:[234,216,206],twin:0,cleav:0,frac:1,relief:.3,dust:.003},
+ opq:{ret:[0,0],und:0,pA:[16,16,19],pB:[16,16,19],twin:0,cleav:0,frac:0,relief:.02,dust:0},
+ gls:{ret:[0,0],und:0,pA:[90,74,56],pB:[82,68,52],twin:0,cleav:0,frac:0,relief:.02,dust:.012}};
+const ELON={qtz:1,plg:1.6,kfs:1.3,bio:3.2,hbl:2.2,cpx:1.6,olv:1.2,grt:1,opq:1,gls:1};
+const FIELDS={
+ grn:{seed:83,warp:14,pops:[{n:55,w:1,comp:[['qtz',.3],['plg',.29],['kfs',.22],['bio',.11],['hbl',.05],['opq',.03]]}],
+   ppl:'대부분 무색(석영·장석) 바탕에 흑운모가 갈색 다색성을 띠며 점점이 박혀 있다. 정장석은 변질로 뿌옇게 흐리다.',
+   xpl:'조립질 등립상 조직. 파동소광하는 석영, 줄무늬 쌍정의 사장석, 격자(타탄)·칼스바드 쌍정의 정장석, 얼룩진 흑운모가 서로 맞물려 있다.'},
+ bas:{seed:97,warp:20,idd:1,pops:[
+   {n:10,w:2.8,comp:[['olv',.45],['cpx',.3],['plg',.25]]},
+   {n:300,w:1,gm:1,rs:.8,comp:[['plg',.58],['cpx',.12],['opq',.14],['gls',.16]]}],
+   ppl:'감람석(가장자리가 붉은 이딩자이트로 변질)·휘석·사장석 반정이 극세립 석기 속에 박힌 반상 조직. 자철석은 검은 점.',
+   xpl:'가늘고 긴 사장석 라스가 어두운 유리질 석기 속에서 무수히 반짝이고, 반정만 크고 선명한 간섭색을 낸다.'},
+ qtz:{seed:11,warp:26,pops:[{n:60,w:1,comp:[['qtz',1]]}],
+   ppl:'무색투명, 낮은 돌출, 벽개 없음. 먼지 같은 유체포유물이 점점이 보인다.',
+   xpl:'1차 회색~흰색. 결정 안에서 밝기가 물결치듯 변하는 파동소광이 특징.'},
+ plg:{seed:29,warp:26,pops:[{n:55,w:1,comp:[['plg',1]]}],
+   ppl:'무색투명. 개방 니콜에서는 석영과 거의 구분되지 않는다.',
+   xpl:'회백색 바탕에 알바이트 쌍정 줄무늬 — 재물대를 돌리면 이웃한 띠가 번갈아 소광된다.'},
+ bio:{seed:37,warp:26,pops:[{n:42,w:1,comp:[['bio',1]]}],
+   ppl:'뚜렷한 다색성: 담황색 ↔ 진갈색. 길쭉한 결정과 한 방향의 완벽한 벽개.',
+   xpl:'높은 간섭색이 갈색에 가려져 얼룩덜룩. 벽개와 나란한 평행 소광.'},
+ hbl:{seed:47,warp:26,pops:[{n:48,w:1,comp:[['hbl',1]]}],
+   ppl:'녹색 계열의 다색성. 약 56°/124°로 교차하는 두 방향 벽개.',
+   xpl:'2차 간섭색. 벽개와 비스듬한 사교 소광 — 소광각을 측정할 수 있다.'},
+ olv:{seed:59,warp:26,pops:[{n:80,w:1,comp:[['olv',1]]}],
+   ppl:'무색~담녹색. 높은 돌출과 불규칙한 균열이 그물처럼 발달.',
+   xpl:'청·녹·분홍의 선명한 2~3차 간섭색. 균열은 검은 선으로 남는다.'},
+ grt:{seed:71,warp:26,pops:[{n:70,w:1,comp:[['grt',1]]}],
+   ppl:'담홍색~무색, 매우 높은 돌출. 불규칙한 균열.',
+   xpl:'등방성이므로 재물대를 아무리 돌려도 완전히 검다 — 등방성 광물의 지문.'}};
+
+let seed=1;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+function hash(i,j){let n=(i*374761393+j*668265263)>>>0;n=((n^(n>>>13))*1274126177)>>>0;return ((n^(n>>>16))>>>0)/4294967295}
+function vnoise(x,y){const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j,
+  u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+  return hash(i,j)*(1-u)*(1-v)+hash(i+1,j)*u*(1-v)+hash(i,j+1)*(1-u)*v+hash(i+1,j+1)*u*v}
+function fbm(x,y){return (vnoise(x,y)+.5*vnoise(x*2.13+17,y*2.13+31)+.25*vnoise(x*4.31+53,y*4.31+7)+.125*vnoise(x*8.63+97,y*8.63+43))/1.875}
+const ML=[[0,0,0,0],[40,38,38,42],[100,94,94,100],[160,150,150,156],[200,206,206,206],[250,236,232,198],
+[300,243,231,148],[350,247,207,90],[400,247,171,60],[450,241,120,50],[500,231,70,60],[550,183,50,122],
+[575,142,62,184],[600,82,84,224],[650,62,132,224],[690,62,173,173],[730,90,193,112],[780,152,203,80],
+[830,213,213,70],[900,243,182,70],[1000,237,121,91],[1100,227,91,142],[1150,172,101,203],[1250,123,142,223],
+[1350,131,192,181],[1450,171,212,141],[1550,222,222,151],[1700,232,192,161]];
+function mlColor(r){if(r<=0)return[0,0,0];
+  for(let i=1;i<ML.length;i++){if(r<=ML[i][0]){const a=ML[i-1],b=ML[i],t=(r-a[0])/(b[0]-a[0]);
+    return[a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t];}}
+  const l=ML[ML.length-1];return[l[1],l[2],l[3]];}
+const MLLUT=new Uint8Array(1701*3);
+for(let r=0;r<=1700;r++){const c=mlColor(r);MLLUT[r*3]=c[0];MLLUT[r*3+1]=c[1];MLLUT[r*3+2]=c[2];}
+
+function genField(){
+  const F=FIELDS[state.mineral];seed=F.seed;
+  const seeds=[];
+  function pick(comp){const r=rnd();let acc=0;for(const[sp,f]of comp){acc+=f;if(r<acc)return sp}return comp[comp.length-1][0]}
+  for(const P of F.pops){for(let i=0;i<P.n;i++){
+    const sp=pick(P.comp),S=SP[sp];
+    const baseEl=P.gm?(sp==='plg'?6:1.3):ELON[sp];
+    const a=rnd()*Math.PI,clA=rnd()*Math.PI;
+    const tw=sp==='kfs'?(rnd()<.5?2:3):S.twin;
+    seeds.push({x:rnd()*N,y:rnd()*N,c:Math.cos(a),s:Math.sin(a),
+      el:1+(baseEl-1)*(.6+rnd()*.8), w:(P.w||1)*(.78+rnd()*.5), sp, tw,
+      th0:S.cleav===1?clA:rnd()*Math.PI, ret:(S.ret[0]+rnd()*(S.ret[1]-S.ret[0]))*(P.rs||1),
+      twinA:a+(rnd()-.5)*.4, twinD:tw===3?3.2+rnd()*2.4:(P.gm?4+rnd()*3.5:6.5+rnd()*9),
+      twinOff:tw===3?.35+rnd()*.2:.5+rnd()*.3,
+      clA, clP:5.5+rnd()*3, tone:.92+rnd()*.16});}}
+  const n=seeds.length;
+  th0Map=new Float32Array(NN);mlR=new Uint8Array(NN);mlG=new Uint8Array(NN);mlB=new Uint8Array(NN);
+  retMap=new Float32Array(NN);maskMap=new Uint8Array(NN);
+  shadeX=new Float32Array(NN);shadeP=new Float32Array(NN);
+  pAr=new Uint8Array(NN);pAg=new Uint8Array(NN);pAb=new Uint8Array(NN);
+  pBr=new Uint8Array(NN);pBg=new Uint8Array(NN);pBb=new Uint8Array(NN);
+  const mg=MAGS[state.obj],C=N/2;                       // 배율만큼 좁은 영역을 원해상도로 샘플링
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const k=y*N+x;
+    const X=(x-C)/mg+C, Y=(y-C)/mg+C;                   // 시료 좌표
+    const wx=X+(fbm(X*.02,Y*.02)-.5)*(F.warp||40), wy=Y+(fbm(X*.02+91,Y*.02+37)-.5)*(F.warp||40);
+    let gi=0,d1=1e18,d2=1e18;
+    for(let i=0;i<n;i++){const sd=seeds[i];
+      const dx=wx-sd.x,dy=wy-sd.y;
+      const u=dx*sd.c+dy*sd.s, v=-dx*sd.s+dy*sd.c;
+      const d=(u*u/sd.el+v*v*sd.el)/(sd.w*sd.w);
+      if(d<d1){d2=d1;d1=d;gi=i}else if(d<d2)d2=d;}
+    const g=seeds[gi],S=SP[g.sp];
+    const ed=Math.sqrt(d2)-Math.sqrt(d1);
+    let th=g.th0+(fbm(X*.012+gi*3,Y*.012)-.5)*S.und;
+    let ret=g.ret;
+    if(g.tw){const ca=Math.cos(g.twinA),sa=Math.sin(g.twinA);
+      const t=wx*ca+wy*sa;let s=0;
+      if(g.tw===1)s=Math.floor(t/g.twinD+(fbm(X*.05,Y*.05)-.5)*.35)&1;
+      else if(g.tw===2)s=((wx-g.x)*ca+(wy-g.y)*sa)>0?1:0;
+      else{const t2=-wx*sa+wy*ca;
+        s=(Math.floor(t/g.twinD+(fbm(X*.05,Y*.05)-.5)*.3)&1)^(Math.floor(t2/(g.twinD*1.2)+(fbm(X*.05+9,Y*.05+4)-.5)*.3)&1);}
+      if(s){th+=g.twinOff;ret*=.92}}
+    ret*=Math.pow(Math.min(ed,6)/6,.55)*(.82+.36*fbm(X*.03+7,Y*.03+5));
+    const[r,gg,b]=mlColor(ret);
+    let cr=r,cg=gg,cb=b;
+    if(S.mask){cr=cr*.42+S.mask[0]*.58;cg=cg*.42+S.mask[1]*.58;cb=cb*.42+S.mask[2]*.58;maskMap[k]=1;}
+    let a0=S.pA,b0=S.pB;
+    if(F.idd&&g.sp==='olv'){const rimT=Math.max(0,1-ed/2.2);
+      if(rimT>0){const R=[164,62,30];
+        cr=cr*(1-rimT)+R[0]*rimT*.9;cg=cg*(1-rimT)+R[1]*rimT*.9;cb=cb*(1-rimT)+R[2]*rimT*.9;
+        a0=[a0[0]*(1-rimT)+R[0]*rimT,a0[1]*(1-rimT)+R[1]*rimT,a0[2]*(1-rimT)+R[2]*rimT];b0=a0;}}
+    mlR[k]=cr;mlG[k]=cg;mlB[k]=cb;th0Map[k]=th;retMap[k]=ret;
+    pAr[k]=a0[0];pAg[k]=a0[1];pAb[k]=a0[2];
+    pBr[k]=b0[0];pBg[k]=b0[1];pBb[k]=b0[2];
+    const nz=.92+fbm(X*.09,Y*.09)*.16;
+    let sX=nz,sP=nz*g.tone;
+    const rim=Math.max(0,1-ed/2.4);
+    sP*=1-rim*S.relief*4.2;
+    if(S.cleav){let c=(wx*Math.cos(g.clA)+wy*Math.sin(g.clA))+(fbm(X*.06,Y*.06)-.5)*2;
+      let f=((c%g.clP)+g.clP)%g.clP;
+      let hit=f<.75;
+      if(S.cleav===2){const a2=g.clA+S.ca*Math.PI/180;
+        let c2=(wx*Math.cos(a2)+wy*Math.sin(a2))+(fbm(X*.06+3,Y*.06+9)-.5)*2;
+        let f2=((c2%(g.clP*1.4))+g.clP*1.4)%(g.clP*1.4);hit=hit||f2<.7;}
+      if(hit){sX*=.42;sP*=.4}}
+    if(S.frac){const f=Math.abs(fbm(X*.045+gi,Y*.045)-.5);
+      if(f<.014){sX*=.15;sP*=.3}}
+    if(S.dust&&hash(Math.floor(X*3)+11,Math.floor(Y*3)+29)<S.dust){sP*=.35;sX*=.6}
+    shadeX[k]=sX;shadeP[k]=sP;
+  }
+  valid=true;
+}
+
+/* ---- 베르트랑 간섭상 (일축성 중심상) ---- */
+let bertCanvas=null,bertKey='';
+function bertrandFig(){
+  const key=state.plate?'p':'n';
+  if(bertCanvas&&bertKey===key)return bertCanvas;
+  const BS=360,c=BS/2;
+  bertCanvas=document.createElement('canvas');bertCanvas.width=bertCanvas.height=BS;
+  const bctx=bertCanvas.getContext('2d');
+  const bi=bctx.createImageData(BS,BS),bd=bi.data;
+  for(let y=0;y<BS;y++)for(let x=0;x<BS;x++){
+    const dx=x-c,dy=y-c,r2=(dx*dx+dy*dy)/(c*c);
+    const q=(y*BS+x)*4;
+    if(r2>1){bd[q+3]=0;continue}
+    const ret=r2*1350,phi=Math.atan2(dy,dx),s2=Math.sin(2*phi);
+    let R,G,B;
+    if(state.plate){let re=530+ret*s2;if(re<0)re=-re;if(re>1700)re=1700;
+      const i3=(re|0)*3;R=MLLUT[i3];G=MLLUT[i3+1];B=MLLUT[i3+2];
+    }else{const amp=s2*s2;const i3=(Math.min(ret,1700)|0)*3;
+      R=MLLUT[i3]*amp;G=MLLUT[i3+1]*amp;B=MLLUT[i3+2]*amp;}
+    bd[q]=R;bd[q+1]=G;bd[q+2]=B;bd[q+3]=255;
+  }
+  bctx.putImageData(bi,0,0);bertKey=key;return bertCanvas;
+}
+
+const off=document.createElement('canvas');off.width=off.height=N;
+const octx=off.getContext('2d');const img=octx.createImageData(N,N);
+const oc=document.getElementById('ocular'),ctx=oc.getContext('2d');
+
+function renderView(){
+  if(!valid)genField();
+  const th=state.theta*Math.PI/180,xpl=state.analyzer===1;
+  const p=state.polRot*Math.PI/180,B=xpl?Math.pow(Math.sin(p),2):0;
+  const S=oc.width,c=S/2,rad=c-6;
+  const blur=Math.abs(state.focus)/100*(3+state.obj*3);
+  ctx.save();ctx.clearRect(0,0,S,S);
+  ctx.beginPath();ctx.arc(c,c,rad,0,7);ctx.clip();
+
+  if(state.bertrand){
+    /* 콘오스코프 모드 */
+    if(xpl){
+      ctx.fillStyle='#000';ctx.fillRect(0,0,S,S);
+      const fig=bertrandFig();
+      const extraBlur=(2-state.obj)*5+blur;             // 40×가 아니면 흐릿
+      ctx.filter=extraBlur>0?`blur(${extraBlur}px)`:'none';
+      ctx.drawImage(fig,c-rad*.94,c-rad*.94,rad*1.88,rad*1.88);
+      ctx.filter='none';
+    }else{
+      ctx.fillStyle='#f0ead8';ctx.fillRect(0,0,S,S);   // 검광판 없으면 밝은 빈 상
+    }
+  }else{
+    /* 정상(오소스코프) 모드 */
+    const d=img.data;
+    if(xpl){
+      const plate=state.plate;
+      for(let k=0;k<NN;k++){
+        const t0=th0Map[k],s2=Math.sin(2*(th+t0-p));
+        let r,g,b;
+        if(plate){
+          let re=530+retMap[k]*s2;if(re<0)re=-re;if(re>1700)re=1700;
+          const i3=(re|0)*3;r=MLLUT[i3];g=MLLUT[i3+1];b=MLLUT[i3+2];
+          if(maskMap[k]){r=r*.42+122*.58;g=g*.42+82*.58;b=b*.42+42*.58;}
+          const a=shadeX[k]*(1-B);r*=a;g*=a;b*=a;
+        }else{
+          const amp=s2*s2*shadeX[k]*(1-B);
+          r=mlR[k]*amp;g=mlG[k]*amp;b=mlB[k]*amp;
+        }
+        if(B>0){const cc=Math.cos(th+t0-p),t=cc*cc,sp2=shadeP[k]*B;
+          r+=(pAr[k]*t+pBr[k]*(1-t))*sp2;
+          g+=(pAg[k]*t+pBg[k]*(1-t))*sp2;
+          b+=(pAb[k]*t+pBb[k]*(1-t))*sp2;}
+        const q=k*4;d[q]=r;d[q+1]=g;d[q+2]=b;d[q+3]=255;
+      }
+    }else{
+      const thp=th-p;                                   // 편광자 회전 → 다색성 위상 이동
+      for(let k=0;k<NN;k++){
+        const cc=Math.cos(thp+th0Map[k]),t=cc*cc,s=shadeP[k],q=k*4;
+        d[q]=(pAr[k]*t+pBr[k]*(1-t))*s;
+        d[q+1]=(pAg[k]*t+pBg[k]*(1-t))*s;
+        d[q+2]=(pAb[k]*t+pBb[k]*(1-t))*s;d[q+3]=255;
+      }
+    }
+    octx.putImageData(img,0,0);
+    ctx.fillStyle=xpl?'#000':'#f4f2ec';ctx.fillRect(0,0,S,S);
+    ctx.translate(c,c);ctx.rotate(-th);
+    const sc=S/(N*.72);                                 // 배율은 시료 샘플링 단계에서 반영됨
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.filter=blur>0?`blur(${blur}px)`:'none';
+    ctx.drawImage(off,-N/2*sc,-N/2*sc,N*sc,N*sc);
+    ctx.filter='none';
+  }
+  ctx.restore();
+  /* 광원 밝기 */
+  if(state.light<1){ctx.fillStyle=`rgba(0,0,0,${(1-state.light)*.95})`;
+    ctx.beginPath();ctx.arc(c,c,rad,0,7);ctx.fill();}
+  /* 비네팅 */
+  const vg=ctx.createRadialGradient(c,c,rad*.45,c,c,rad);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(.75,'rgba(0,0,0,.08)');
+  vg.addColorStop(.93,'rgba(0,0,0,.4)');vg.addColorStop(1,'rgba(0,0,0,.85)');
+  ctx.fillStyle=vg;ctx.beginPath();ctx.arc(c,c,rad,0,7);ctx.fill();
+  ctx.strokeStyle='#000';ctx.lineWidth=10;ctx.beginPath();ctx.arc(c,c,rad,0,7);ctx.stroke();
+  ctx.strokeStyle=(state.analyzer&&!B)?'rgba(255,255,255,.5)':'rgba(20,20,20,.5)';ctx.lineWidth=1.3;
+  ctx.beginPath();ctx.moveTo(c-rad*.92,c);ctx.lineTo(c+rad*.92,c);
+  ctx.moveTo(c,c-rad*.92);ctx.lineTo(c,c+rad*.92);ctx.stroke();
+}
+
+/* 시야 드래그 → 재물대 회전 */
+let vDrag=null;
+oc.addEventListener('pointerdown',e=>{vDrag=e.clientX;oc.setPointerCapture(e.pointerId);oc.style.cursor='grabbing'});
+oc.addEventListener('pointermove',e=>{if(vDrag===null)return;
+  state.theta=((state.theta+(e.clientX-vDrag)*.5)%360+360)%360;vDrag=e.clientX;upd();});
+oc.addEventListener('pointerup',()=>{vDrag=null;oc.style.cursor='grab'});
+
+function updateNote(){
+  const F=FIELDS[state.mineral],xpl=state.analyzer===1;
+  const iso=state.mineral==='grt';
+  const rock=state.mineral==='grn'||state.mineral==='bas';
+  const name=document.getElementById('mineral').selectedOptions[0].text.split(' ')[0];
+  let body,chips='';
+  if(state.bertrand){
+    body=xpl?'베르트랑 렌즈 — 콘오스코프 간섭상. 검은 십자(아이소자이어)와 광로차가 커지며 생기는 색 고리(아이소크롬)가 보인다. 40×에서 가장 선명하다.'
+      :'베르트랑 렌즈가 켜져 있지만 검광판이 없어 간섭상이 생기지 않는다. 직교 니콜로 전환해 보세요.';
+    if(xpl&&state.plate)chips+='<span class="ext on">λ판: 사분면 색으로 광학적 부호(+/−) 판정</span>';
+  }else{
+    body=xpl?F.xpl:F.ppl;
+    const nearExt=xpl&&!iso&&!rock&&(Math.round(state.theta)%90<8||Math.round(state.theta)%90>82);
+    if(xpl){
+      if(state.plate)chips+='<span class="ext on">λ판 삽입: 회색 광물이 청/황으로 갈라짐, 소광 자리는 자홍색(530nm)</span>';
+      if(state.polRot>5)chips+=`<span class="ext on">편광자 ${Math.round(state.polRot)}° — 직교가 풀려 배경이 밝아짐</span>`;
+      chips+=iso?'<span class="ext on">회전해도 변화 없음 (등방성)</span>'
+        :rock?'<span class="ext on">결정마다 방향이 달라 번갈아 소광됩니다</span>'
+        :`<span class="ext ${nearExt?'on':''}">${nearExt?'소광 부근 (90°마다 어두워짐)':'재물대를 돌려 소광을 찾아보세요'}</span>`;
+    }else if(state.mineral==='bio'||state.mineral==='hbl'||state.mineral==='grn'){
+      chips+='<span class="ext on">재물대나 편광자를 돌리면 유색 광물의 색이 변합니다 (다색성)</span>';
+    }
+    if(Math.abs(state.focus)>25)chips+='<span class="ext">초점이 맞지 않습니다 — 초점 슬라이더를 가운데로</span>';
+  }
+  document.getElementById('obsNote').innerHTML=
+    `<b>${name} · ${xpl?'직교 니콜':'개방 니콜'} · ${MAGL[state.obj]}</b> — ${body}${chips}`;
+}
+
+document.getElementById('mineral').onchange=e=>{state.mineral=e.target.value;valid=false;upd();};
+syncUI();renderView();updateNote();
+</script>
+</body>
+</html>
