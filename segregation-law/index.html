@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>분리의 법칙 확인하기 · 동전 던지기 시뮬레이션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF3EC; --card:#FFFFFF; --ink:#1C2A22; --muted:#5B6B60; --line:#CFDACB;
+  --pod:#2F5D3A; --podSoft:#DCE9D8; --yellow:#E8C547; --yellowDeep:#B8921A; --green:#6FA43E;
+  --coinA:#D9DDE0; --coinB:#A9B0B6; --coinEdge:#8A9198;
+  --stickerY:#FFF4C9; --stickery:#E4F2D6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#141C17; --card:#1C2721; --ink:#E6EEE7; --muted:#9FB0A4; --line:#2E3D33;
+    --pod:#8FCB9B; --podSoft:#23352A; --yellow:#E8C547; --yellowDeep:#E8C547; --green:#8BC25A;
+    --coinA:#B7BDC2; --coinB:#80878D; --coinEdge:#5F666C;
+    --stickerY:#4A4122; --stickery:#2C3F22;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141C17; --card:#1C2721; --ink:#E6EEE7; --muted:#9FB0A4; --line:#2E3D33;
+  --pod:#8FCB9B; --podSoft:#23352A; --yellow:#E8C547; --yellowDeep:#E8C547; --green:#8BC25A;
+  --coinA:#B7BDC2; --coinB:#80878D; --coinEdge:#5F666C;
+  --stickerY:#4A4122; --stickery:#2C3F22;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  line-height:1.6;font-size:16px}
+.wrap{max-width:980px;margin:0 auto;padding:24px 18px 48px}
+h1,h2,.display{font-family:"Jua","Noto Sans KR",sans-serif;font-weight:400;letter-spacing:-.01em}
+header h1{font-size:clamp(28px,5vw,40px);margin:0;color:var(--pod);line-height:1.2}
+header p{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.goal{display:inline-block;margin-top:12px;font-size:14px;color:var(--pod);background:var(--podSoft);
+  padding:4px 12px;border-radius:999px}
+
+.stage{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 18px}
+.parents{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:10px;justify-items:center}
+.who{text-align:center}
+.who .name{font-size:14px;color:var(--muted);margin-bottom:8px}
+.who .geno{font-size:13px;color:var(--muted);margin-top:8px}
+.op{font-family:"Jua",sans-serif;font-size:32px;color:var(--muted)}
+
+/* coin */
+.coin{width:110px;height:110px;perspective:600px}
+.coin-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform 1.1s cubic-bezier(.25,.8,.3,1)}
+.face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%,var(--coinA),var(--coinB) 70%);
+  box-shadow:inset 0 0 0 6px var(--coinEdge),inset 0 0 0 9px var(--coinA)}
+.face.back{transform:rotateY(180deg)}
+.sticker{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
+  font-family:"Jua",sans-serif;font-size:40px;line-height:1;border:2px dashed var(--muted)}
+.sticker.Y{background:var(--stickerY);color:var(--yellowDeep)}
+.sticker.y{background:var(--stickery);color:var(--green)}
+
+/* offspring */
+.child{min-width:130px;text-align:center}
+.pea{width:78px;height:78px;border-radius:50%;margin:0 auto;background:var(--line);
+  box-shadow:inset -8px -10px 0 rgba(0,0,0,.12),inset 6px 6px 0 rgba(255,255,255,.35);
+  transition:background .4s, transform .4s}
+.pea.yellow{background:var(--yellow)}
+.pea.green{background:var(--green)}
+.pea.pop{transform:scale(1.12)}
+.child .gt{font-family:"Jua",sans-serif;font-size:30px;margin-top:6px;min-height:1.3em}
+.child .ph{font-size:14px;color:var(--muted);min-height:1.4em}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px}
+button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  padding:10px 16px;min-height:44px}
+button.main{background:var(--pod);color:var(--paper);border-color:var(--pod);font-family:"Jua",sans-serif;font-size:20px;padding:10px 26px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.progress{text-align:center;margin-top:12px;color:var(--muted);font-size:15px}
+.progress b{color:var(--ink)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.panel h2{margin:0 0 10px;font-size:22px;color:var(--pod)}
+.tablebox{overflow-x:auto;max-height:320px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--card)}
+td.gt{font-family:"Jua",sans-serif;font-size:19px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:6px}
+.empty{color:var(--muted);text-align:center;padding:26px 8px;font-size:15px}
+
+.bars{display:flex;flex-direction:column;gap:12px}
+.bar-row .lab{display:flex;justify-content:space-between;font-size:15px}
+.bar-row .lab .g{font-family:"Jua",sans-serif;font-size:19px}
+.track{position:relative;height:18px;background:var(--podSoft);border-radius:9px;overflow:hidden;margin-top:3px}
+.fill{height:100%;border-radius:9px;transition:width .4s}
+.expect{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.legend{font-size:13px;color:var(--muted);margin-top:6px}
+.ratio{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:15px}
+.ratio .big{font-family:"Jua",sans-serif;font-size:24px}
+
+.punnett{display:grid;grid-template-columns:48px 1fr 1fr;gap:4px;max-width:260px;margin:6px auto 0;text-align:center}
+.punnett div{padding:8px 0;border-radius:8px}
+.punnett .h{color:var(--muted);font-family:"Jua",sans-serif;font-size:20px}
+.punnett .c{font-family:"Jua",sans-serif;font-size:22px;background:var(--podSoft)}
+.explain p{margin:8px 0;max-width:70ch}
+.map{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;margin-top:10px}
+.map dt{color:var(--pod);font-weight:700}
+.map dd{margin:0}
+.q{margin-top:14px;padding:12px 14px;background:var(--podSoft);border-radius:12px;font-size:15px}
+
+.classTable input{width:64px;font:inherit;font-size:16px;text-align:center;padding:6px 4px;border:1px solid var(--line);
+  border-radius:8px;background:var(--paper);color:var(--ink)}
+.classTable input:focus-visible,#groupN:focus-visible{outline:3px solid var(--yellow);outline-offset:1px}
+#groupN{font:inherit;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
+.classTable .sumRow th,.classTable .sumRow td{background:var(--podSoft);color:var(--ink);font-weight:700;border-bottom:none;position:static}
+.classTable .sumRow td{font-family:"Jua",sans-serif;font-size:22px;font-weight:400}
+.classTable .rm{min-height:34px;padding:4px 10px;font-size:14px;color:var(--muted)}
+@media (max-width:720px){
+  .parents{grid-template-columns:1fr auto 1fr;row-gap:16px}
+  .parents .eq{grid-column:1 / -1}
+  .parents .child{grid-column:1 / -1}
+  .coin{width:92px;height:92px}
+  .sticker{width:52px;height:52px;font-size:34px}
+  .grid2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .coin-inner,.pea,.fill{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>분리의 법칙 확인하기</h1>
+    <p>동전 2개의 한쪽 면에는 Y, 다른 쪽 면에는 y가 붙어 있어요. 두 사람이 동전을 동시에 던져 위로 나온 유전자를 합하면 자손의 유전자형이 정해집니다.</p>
+    <span class="goal">지도 목표 · 동전을 이용한 모의 활동으로 분리의 법칙을 이해한다</span>
+  </header>
+
+  <section class="stage" aria-label="동전 던지기">
+    <div class="parents">
+      <div class="who">
+        <div class="name">첫 번째 사람 (부모 Yy)</div>
+        <div class="coin"><div class="coin-inner" id="coin1">
+          <div class="face front"><div class="sticker Y">Y</div></div>
+          <div class="face back"><div class="sticker y">y</div></div>
+        </div></div>
+        <div class="geno" id="g1">생식세포: ?</div>
+      </div>
+      <div class="op" aria-hidden="true">+</div>
+      <div class="who">
+        <div class="name">두 번째 사람 (부모 Yy)</div>
+        <div class="coin"><div class="coin-inner" id="coin2">
+          <div class="face front"><div class="sticker Y">Y</div></div>
+          <div class="face back"><div class="sticker y">y</div></div>
+        </div></div>
+        <div class="geno" id="g2">생식세포: ?</div>
+      </div>
+      <div class="op eq" aria-hidden="true">=</div>
+      <div class="child">
+        <div class="name" style="font-size:14px;color:var(--muted);margin-bottom:8px">자손 (완두 색)</div>
+        <div class="pea" id="pea"></div>
+        <div class="gt" id="childGt">?</div>
+        <div class="ph" id="childPh">동전을 던져 보세요</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="main" id="tossBtn">동전 던지기</button>
+      <button id="auto5">5회 연속 던지기</button>
+      <button id="fast100">100회 빠르게</button>
+      <button id="fast1000">1000회 빠르게</button>
+      <button id="resetBtn">처음부터</button>
+    </div>
+    <div class="progress" id="progress" aria-live="polite">교과서 활동: <b>0</b> / 5회</div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>기록표</h2>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>회</th><th>첫 번째 동전</th><th>두 번째 동전</th><th>자손 유전자형</th><th>표현형</th></tr></thead>
+          <tbody id="log"></tbody>
+        </table>
+        <div class="empty" id="emptyMsg">아직 기록이 없어요. ‘동전 던지기’를 눌러 첫 자손을 만들어 보세요.</div>
+      </div>
+      <div class="legend" id="logNote"></div>
+    </section>
+
+    <section class="panel">
+      <h2>결과 비교</h2>
+      <div class="bars">
+        <div class="bar-row"><div class="lab"><span class="g">YY</span><span id="nYY">0회 (0%)</span></div>
+          <div class="track"><div class="fill" id="bYY" style="background:var(--yellow);width:0"></div><div class="expect" style="left:25%"></div></div></div>
+        <div class="bar-row"><div class="lab"><span class="g">Yy</span><span id="nYy">0회 (0%)</span></div>
+          <div class="track"><div class="fill" id="bYy" style="background:var(--yellowDeep);width:0"></div><div class="expect" style="left:50%"></div></div></div>
+        <div class="bar-row"><div class="lab"><span class="g">yy</span><span id="nyy">0회 (0%)</span></div>
+          <div class="track"><div class="fill" id="byy" style="background:var(--green);width:0"></div><div class="expect" style="left:25%"></div></div></div>
+      </div>
+      <div class="legend">검은 세로선은 이론적 기댓값(YY 25%, Yy 50%, yy 25%)이에요.</div>
+      <div class="ratio">
+        <div>유전자형 비 YY : Yy : yy</div>
+        <div class="big" id="gRatio">– : – : –</div>
+        <div style="margin-top:8px">표현형 비 노란색 : 초록색</div>
+        <div class="big" id="pRatio">– : –</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:18px" aria-label="학급 전체의 결과 합계">
+    <h2>학급 전체의 결과 합계</h2>
+    <p style="margin:0 0 12px;color:var(--muted);max-width:70ch">각 모둠이 얻은 유전자형 횟수를 모두 더해 표에 기록합니다. 숫자 칸을 눌러 실제 모둠 결과를 입력하거나, 모의 모둠을 만들어 볼 수 있어요.</p>
+    <div class="controls" style="justify-content:flex-start;margin-top:0">
+      <button id="addMine">내 결과를 모둠으로 추가</button>
+      <button id="addEmpty">빈 모둠 추가</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:15px">
+        모둠 수 <input id="groupN" type="number" min="1" max="50" value="6" style="width:64px">
+      </label>
+      <button id="simGroups">모둠별 5회씩 모의 실행</button>
+      <button id="loadExample">예시 답안 불러오기</button>
+      <button id="clearGroups">표 비우기</button>
+    </div>
+    <div class="tablebox" style="max-height:none;margin-top:14px">
+      <table class="classTable">
+        <thead><tr><th>모둠</th><th>YY</th><th>Yy</th><th>yy</th><th>합계</th><th></th></tr></thead>
+        <tbody id="groupRows"></tbody>
+        <tfoot>
+          <tr class="sumRow"><th>학급 전체의 결과 합계</th><td id="sYY">0</td><td id="sYy">0</td><td id="syy">0</td><td id="sAll">0</td><td></td></tr>
+        </tfoot>
+      </table>
+      <div class="empty" id="groupEmpty">아직 모둠 결과가 없어요. 위의 버튼으로 결과를 추가해 보세요.</div>
+    </div>
+    <div class="ratio" id="classRatio">
+      <div>학급 전체 유전자형 비 YY : Yy : yy</div>
+      <div class="big" id="cgRatio">– : – : –</div>
+      <div style="margin-top:8px">표현형 비 노란색 : 초록색</div>
+      <div class="big" id="cpRatio">– : –</div>
+      <div class="legend" id="classNote"></div>
+    </div>
+  </section>
+
+  <section class="panel explain" style="margin-top:18px">
+    <h2>이 활동이 보여 주는 것</h2>
+    <dl class="map">
+      <dt>동전 1개</dt><dd>대립유전자 Y와 y를 한 쌍 가진 부모(Yy)</dd>
+      <dt>동전 던지기</dt><dd>생식세포가 만들어질 때 Y와 y가 분리되어 둘 중 하나만 들어가는 과정</dd>
+      <dt>위로 나온 면</dt><dd>생식세포에 들어간 유전자 (Y와 y가 나올 확률은 각각 1/2)</dd>
+      <dt>두 면 합치기</dt><dd>수정: 두 생식세포가 만나 자손의 유전자형이 정해짐</dd>
+    </dl>
+    <p>Y(노란색)는 y(초록색)에 대해 우성이므로 YY와 Yy는 노란색, yy만 초록색 완두가 됩니다.</p>
+    <div class="punnett" aria-label="퍼넷 사각형">
+      <div></div><div class="h">Y</div><div class="h">y</div>
+      <div class="h">Y</div><div class="c">YY</div><div class="c">Yy</div>
+      <div class="h">y</div><div class="c">Yy</div><div class="c">yy</div>
+    </div>
+    <div class="q"><b>생각해 보기</b> 5회만 던졌을 때와 1000회 던졌을 때, 결과가 1 : 2 : 1(표현형 3 : 1)에 가까운 정도는 어떻게 다른가요? 그 까닭은 무엇일까요?</div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = id => document.getElementById(id);
+  const coins = [$('coin1'), $('coin2')];
+  const rot = [0, 0];
+  let records = [];
+  const counts = {YY:0, Yy:0, yy:0};
+  let busy = false;
+
+  const flip = () => Math.random() < 0.5 ? 'Y' : 'y';
+  const combine = (a,b) => (a==='Y'&&b==='Y') ? 'YY' : (a==='y'&&b==='y') ? 'yy' : 'Yy';
+  const pheno = g => g==='yy' ? '초록색' : '노란색';
+
+  function setCoin(i, face, animate){
+    const cur = rot[i];
+    let target = Math.ceil(cur/360)*360 + (animate ? 360*(3+Math.floor(Math.random()*2)) : 0);
+    if (face==='y') target += 180;
+    if (target <= cur) target += 360;
+    rot[i] = target;
+    coins[i].style.transition = (animate && !reduce) ? '' : 'none';
+    coins[i].style.transform = 'rotateY('+target+'deg)';
+  }
+
+  function showChild(a,b,g){
+    $('g1').textContent = '생식세포: ' + a;
+    $('g2').textContent = '생식세포: ' + b;
+    $('childGt').textContent = g;
+    $('childPh').textContent = pheno(g) + ' 완두';
+    const pea = $('pea');
+    pea.className = 'pea ' + (g==='yy' ? 'green' : 'yellow');
+    if (!reduce){ pea.classList.add('pop'); setTimeout(()=>pea.classList.remove('pop'), 350); }
+  }
+
+  function addRecord(a,b){
+    const g = combine(a,b);
+    counts[g]++;
+    records.push({a,b,g});
+    return g;
+  }
+
+  function renderLog(){
+    const tbody = $('log');
+    const MAX = 50;
+    const start = Math.max(0, records.length - MAX);
+    let html = '';
+    for (let i = records.length-1; i >= start; i--){
+      const r = records[i];
+      const col = r.g==='yy' ? 'var(--green)' : 'var(--yellow)';
+      html += '<tr><td>'+(i+1)+'</td><td class="gt">'+r.a+'</td><td class="gt">'+r.b+'</td><td class="gt">'+r.g+
+              '</td><td><span class="dot" style="background:'+col+'"></span>'+pheno(r.g)+'</td></tr>';
+    }
+    tbody.innerHTML = html;
+    $('emptyMsg').style.display = records.length ? 'none' : 'block';
+    $('logNote').textContent = records.length > MAX ? '최근 '+MAX+'회만 표시하고 있어요. 전체 '+records.length+'회는 오른쪽 결과에 모두 반영됩니다.' : '';
+  }
+
+  function fmt(x){ return (Math.round(x*100)/100).toString(); }
+
+  function renderStats(){
+    const n = records.length;
+    [['YY','bYY','nYY'],['Yy','bYy','nYy'],['yy','byy','nyy']].forEach(([k,b,t])=>{
+      const p = n ? counts[k]/n*100 : 0;
+      $(b).style.width = p + '%';
+      $(t).textContent = counts[k] + '회 (' + (Math.round(p*10)/10) + '%)';
+    });
+    if (n){
+      const base = counts.YY || 1;
+      const unit = n/4;
+      $('gRatio').textContent = counts.YY+' : '+counts.Yy+' : '+counts.yy + '  ≈  ' + fmt(counts.YY/unit)+' : '+fmt(counts.Yy/unit)+' : '+fmt(counts.yy/unit);
+      const yel = counts.YY+counts.Yy, gr = counts.yy;
+      $('pRatio').textContent = yel+' : '+gr + (gr ? '  ≈  '+fmt(yel/gr)+' : 1' : '');
+    } else {
+      $('gRatio').textContent = '– : – : –';
+      $('pRatio').textContent = '– : –';
+    }
+    const done = Math.min(n,5);
+    $('progress').innerHTML = n <= 5
+      ? '교과서 활동: <b>'+done+'</b> / 5회' + (n===5 ? ' 완료! 더 많이 던지면 비율이 어떻게 변하는지 확인해 보세요.' : '')
+      : '지금까지 총 <b>'+n+'</b>회 던졌어요.';
+  }
+
+  function setBusy(v){
+    busy = v;
+    ['tossBtn','auto5','fast100','fast1000','resetBtn'].forEach(id=>$(id).disabled = v);
+  }
+
+  function tossOnce(){
+    return new Promise(resolve=>{
+      const a = flip(), b = flip();
+      setCoin(0,a,true); setCoin(1,b,true);
+      $('childGt').textContent = '…';
+      $('childPh').textContent = '동전이 도는 중';
+      setTimeout(()=>{
+        const g = addRecord(a,b);
+        showChild(a,b,g);
+        renderLog(); renderStats();
+        resolve();
+      }, reduce ? 50 : 1150);
+    });
+  }
+
+  $('tossBtn').addEventListener('click', async ()=>{
+    if (busy) return; setBusy(true); await tossOnce(); setBusy(false);
+  });
+  $('auto5').addEventListener('click', async ()=>{
+    if (busy) return; setBusy(true);
+    for (let i=0;i<5;i++){ await tossOnce(); await new Promise(r=>setTimeout(r, reduce?0:300)); }
+    setBusy(false);
+  });
+  function fast(n){
+    if (busy) return;
+    let a,b,g;
+    for (let i=0;i<n;i++){ a=flip(); b=flip(); g=addRecord(a,b); }
+    setCoin(0,a,false); setCoin(1,b,false);
+    showChild(a,b,g);
+    renderLog(); renderStats();
+  }
+  $('fast100').addEventListener('click', ()=>fast(100));
+  $('fast1000').addEventListener('click', ()=>fast(1000));
+  $('resetBtn').addEventListener('click', ()=>{
+    if (busy) return;
+    records = []; counts.YY = counts.Yy = counts.yy = 0;
+    $('g1').textContent = '생식세포: ?'; $('g2').textContent = '생식세포: ?';
+    $('childGt').textContent = '?'; $('childPh').textContent = '동전을 던져 보세요';
+    $('pea').className = 'pea';
+    renderLog(); renderStats();
+  });
+
+  renderLog(); renderStats();
+
+  /* ---------- 학급 전체 결과 합계 ---------- */
+  let groups = [];
+  let seq = 0;
+  const KEYS = ['YY','Yy','yy'];
+  const newGroup = (name, v) => ({id: ++seq, name, YY:v.YY||0, Yy:v.Yy||0, yy:v.yy||0});
+
+  function renderGroups(){
+    const tb = $('groupRows');
+    tb.innerHTML = groups.map(g =>
+      '<tr data-id="'+g.id+'"><td>'+g.name+'</td>' +
+      KEYS.map(k => '<td><input type="number" min="0" inputmode="numeric" aria-label="'+g.name+' '+k+'" data-k="'+k+'" value="'+g[k]+'"></td>').join('') +
+      '<td class="rowSum">'+(g.YY+g.Yy+g.yy)+'</td>' +
+      '<td><button class="rm" aria-label="'+g.name+' 삭제">삭제</button></td></tr>'
+    ).join('');
+    $('groupEmpty').style.display = groups.length ? 'none' : 'block';
+    renderClassSum();
+  }
+
+  function renderClassSum(){
+    const s = {YY:0,Yy:0,yy:0};
+    groups.forEach(g => KEYS.forEach(k => s[k] += g[k]));
+    const n = s.YY + s.Yy + s.yy;
+    $('sYY').textContent = s.YY; $('sYy').textContent = s.Yy; $('syy').textContent = s.yy; $('sAll').textContent = n;
+    if (n){
+      const u = n/4;
+      $('cgRatio').textContent = s.YY+' : '+s.Yy+' : '+s.yy+'  ≈  '+fmt(s.YY/u)+' : '+fmt(s.Yy/u)+' : '+fmt(s.yy/u);
+      const yel = s.YY+s.Yy;
+      $('cpRatio').textContent = yel+' : '+s.yy + (s.yy ? '  ≈  '+fmt(yel/s.yy)+' : 1' : '');
+      $('classNote').textContent = '총 '+n+'회 결과예요. 이론적 기댓값은 YY '+fmt(n/4)+'회, Yy '+fmt(n/2)+'회, yy '+fmt(n/4)+'회입니다.';
+    } else {
+      $('cgRatio').textContent = '– : – : –'; $('cpRatio').textContent = '– : –'; $('classNote').textContent = '';
+    }
+  }
+
+  $('groupRows').addEventListener('input', e => {
+    const inp = e.target; if (!inp.dataset.k) return;
+    const tr = inp.closest('tr'); const g = groups.find(x => x.id == tr.dataset.id); if (!g) return;
+    const v = Math.max(0, parseInt(inp.value,10) || 0);
+    g[inp.dataset.k] = v;
+    tr.querySelector('.rowSum').textContent = g.YY+g.Yy+g.yy;
+    renderClassSum();
+  });
+  $('groupRows').addEventListener('click', e => {
+    if (!e.target.classList.contains('rm')) return;
+    const id = e.target.closest('tr').dataset.id;
+    groups = groups.filter(g => g.id != id);
+    renderGroups();
+  });
+
+  $('addMine').addEventListener('click', () => {
+    if (!records.length){ $('classNote').textContent = '먼저 위에서 동전을 던져 내 결과를 만들어 주세요.'; return; }
+    groups.push(newGroup('우리 모둠 ('+records.length+'회)', counts));
+    renderGroups();
+  });
+  $('addEmpty').addEventListener('click', () => {
+    groups.push(newGroup((groups.length+1)+'모둠', {}));
+    renderGroups();
+    const inputs = $('groupRows').querySelectorAll('tr:last-child input');
+    if (inputs[0]) inputs[0].focus();
+  });
+  $('simGroups').addEventListener('click', () => {
+    const n = Math.min(50, Math.max(1, parseInt($('groupN').value,10) || 1));
+    $('groupN').value = n;
+    for (let i=0;i<n;i++){
+      const c = {YY:0,Yy:0,yy:0};
+      for (let t=0;t<5;t++) c[combine(flip(),flip())]++;
+      groups.push(newGroup((groups.length+1)+'모둠 (모의)', c));
+    }
+    renderGroups();
+  });
+  $('loadExample').addEventListener('click', () => {
+    groups = [newGroup('예시 답안 (학급 전체)', {YY:9, Yy:16, yy:7})];
+    renderGroups();
+  });
+  $('clearGroups').addEventListener('click', () => { groups = []; renderGroups(); });
+
+  renderGroups();
+})();
+</script>
+</body>
+</html>
