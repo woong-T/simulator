@@ -1,0 +1,397 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>참새와 메뚜기 개체군 모의실험</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* 레이아웃: 위 = 실험대(생태계 판) + 조작, 옆 = 규칙·기록 양식, 아래 = 그래프와 정리 */
+:root{
+  --bg:#f2f4ec; --panel:#ffffff; --fg:#1d281c; --muted:#5d6a5a; --line:#d6dccd;
+  --field:#86b45f; --field-dark:#5f8f3e; --zone-l:#f6dcd8; --zone-r:#d6e3f5;
+  --hopper:#2f8a35; --sparrow:#a8632a; --caught:#c8372d; --accent:#3d6b2a;
+  --font-display:"Do Hyeon","IBM Plex Sans KR",system-ui,sans-serif;
+  --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a13; --panel:#1c241b; --fg:#e4eadf; --muted:#9aa894; --line:#334030;
+  --field:#4d7436; --field-dark:#3a5c27; --zone-l:#4a2e2b; --zone-r:#263547;
+  --hopper:#7fd17a; --sparrow:#e0a066; --caught:#ff7b6e; --accent:#9fd47f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a13; --panel:#1c241b; --fg:#e4eadf; --muted:#9aa894; --line:#334030;
+  --field:#4d7436; --field-dark:#3a5c27; --zone-l:#4a2e2b; --zone-r:#263547;
+  --hopper:#7fd17a; --sparrow:#e0a066; --caught:#ff7b6e; --accent:#9fd47f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+header{display:grid;gap:4px}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted)}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(28px,4vw,40px);line-height:1.15;margin:0;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:400;font-size:22px;margin:0 0 10px}
+.goal{margin:0;color:var(--muted);max-width:65ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+canvas{display:block;width:100%;height:auto;border-radius:6px;touch-action:manipulation}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:6px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type=number]{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+input[type=number]{width:72px;font-family:var(--font-data)}
+.speed{margin-left:auto;display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+.roles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:12px}
+@media (max-width:560px){.roles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.role{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12.5px;color:var(--muted);line-height:1.4}
+.role b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--line);color:var(--fg);font-size:12px;margin-right:4px}
+.role.on{border-color:var(--accent);color:var(--fg)}
+.role.on b{background:var(--accent);color:var(--panel)}
+.status{margin-top:10px;font-size:14px;min-height:1.6em}
+.counts{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--font-data);font-size:13px;color:var(--muted)}
+.counts strong{font-size:22px;color:var(--fg);font-weight:600;margin-left:4px}
+.counts .s strong{color:var(--sparrow)} .counts .g strong{color:var(--hopper)}
+.side{display:grid;gap:20px}
+ol.rules{margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px}
+.note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+details.settings{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+details summary{cursor:pointer;font-weight:600}
+.fields{display:grid;gap:8px;margin-top:10px}
+.fields label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px}
+.tbl{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-family:var(--font-data);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel);font-family:var(--font-body);font-weight:600;font-size:12.5px}
+th:first-child,td:first-child{text-align:center}
+td.s{color:var(--sparrow)} td.g{color:var(--hopper)}
+.chart svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.summary-q{margin:0 0 8px;font-weight:600}
+.answer{color:var(--muted);margin:8px 0 0;max-width:70ch}
+.obs{margin:8px 0 0;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">탐구 · 1. 생태계와 환경 · 컴퓨터 모의실험</span>
+    <h1>참새와 메뚜기 개체군 모의실험</h1>
+    <p class="goal">목표: 먹이 관계에 따른 개체군의 변동을 설명할 수 있다. 초록색 클립은 메뚜기, 투명 컵 뚜껑은 참새입니다. 뚜껑을 판 위에 던져 그 안에 들어간 클립을 참새가 잡아먹은 것으로 칩니다.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-label="생태계 판">
+      <canvas id="board" width="840" height="420" aria-label="왼쪽 사냥 준비 구역, 가운데 생태계 판, 오른쪽 생존·번식 구역"></canvas>
+      <div class="counts" style="margin-top:10px">
+        <span>세대<strong id="cGen">1</strong></span>
+        <span class="s">참새<strong id="cS">3</strong></span>
+        <span class="g">메뚜기<strong id="cG">20</strong></span>
+      </div>
+      <div class="roles" id="roles">
+        <div class="role" data-r="가"><b>가</b>뚜껑을 던져 참새의 사냥 표현</div>
+        <div class="role" data-r="나"><b>나</b>개체군 변동 규칙 안내</div>
+        <div class="role" data-r="다"><b>다</b>참새·메뚜기 제거와 번식 표현</div>
+        <div class="role" data-r="라"><b>라</b>세대마다 개체수 기록</div>
+      </div>
+      <div class="status" id="status">‘1세대 진행’을 누르면 참새가 차례로 사냥을 시작합니다.</div>
+      <div class="controls">
+        <button class="primary" id="btnStep">1세대 진행</button>
+        <button id="btnAuto">20세대 자동</button>
+        <button id="btnReset">처음부터</button>
+        <label class="speed" for="speed">속도
+          <select id="speed">
+            <option value="1">천천히</option>
+            <option value="0.45" selected>보통</option>
+            <option value="0.15">빠르게</option>
+            <option value="0">즉시</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <h2>개체군 변동 규칙</h2>
+        <ol class="rules" id="ruleList"></ol>
+        <p class="note">교과서 학습 자료 2(177쪽) ‘개체군 변동 규칙’을 그대로 따릅니다. 다른 조건으로 실험해 보고 싶으면 아래에서 숫자를 바꾸세요.</p>
+        <details class="settings">
+          <summary>규칙 숫자 바꾸기</summary>
+          <div class="fields">
+            <label for="pG0">처음 메뚜기 수 <input type="number" id="pG0" min="1" max="50" value="20"></label>
+            <label for="pS0">처음 참새 수 <input type="number" id="pS0" min="1" max="10" value="3"></label>
+            <label for="pSurv">참새 생존에 필요한 메뚜기 <input type="number" id="pSurv" min="1" max="10" value="2"></label>
+            <label for="pBreed">참새 번식에 필요한 메뚜기 <input type="number" id="pBreed" min="2" max="15" value="3"></label>
+            <label for="pMinS">참새 최소 <input type="number" id="pMinS" min="0" max="10" value="2"></label>
+            <label for="pMaxS">참새 최대 <input type="number" id="pMaxS" min="1" max="20" value="10"></label>
+            <label for="pMinG">메뚜기 최소 <input type="number" id="pMinG" min="0" max="50" value="5"></label>
+            <label for="pMaxG">메뚜기 최대 <input type="number" id="pMaxG" min="5" max="120" value="50"></label>
+            <label for="pLid">뚜껑 크기(판 대비 %) <input type="number" id="pLid" min="3" max="25" value="12"></label>
+            <button id="btnApply">이 규칙으로 처음부터</button>
+          </div>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>개체군 변동 기록 양식</h2>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>세대</th><th>참새 수</th><th>메뚜기 수</th><th>잡아먹힌 메뚜기</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card chart">
+    <h2>세대에 따른 개체수 변화</h2>
+    <div class="legend"><span><i style="background:var(--hopper)"></i>메뚜기 개체수</span><span><i style="background:var(--sparrow)"></i>참새 개체수</span></div>
+    <div id="chart"></div>
+  </section>
+
+  <section class="card">
+    <h2>정리</h2>
+    <p class="summary-q">참새의 개체수와 메뚜기의 개체수 사이에는 어떤 관계가 있는지 설명해 보자.</p>
+    <p class="obs" id="obs">몇 세대를 진행하면 여기에 관찰 결과가 나타납니다.</p>
+    <details>
+      <summary>예시 답안 보기</summary>
+      <p class="answer">메뚜기의 개체수가 증가하면 참새의 개체수가 증가하고, 참새의 개체수가 증가하면 메뚜기의 개체수는 감소한다. 메뚜기의 개체수가 감소하면 참새의 개체수가 감소하고, 참새의 개체수가 감소하면 다시 메뚜기의 개체수가 증가한다. 이것이 반복되면서 두 개체군의 개체수는 주기적으로 변동한다.</p>
+    </details>
+  </section>
+</div>
+
+<script>
+(() => {
+  const BW = 600, BH = 420, ZL = 120, ZR = 120, CW = ZL + BW + ZR;
+  const cv = document.getElementById('board'), ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  let P, st, busy = false, autoStop = false;
+
+  function readParams() {
+    const n = (id, lo, hi) => Math.min(hi, Math.max(lo, Number($(id).value) || lo));
+    const p = { g0: n('pG0',1,120), s0: n('pS0',1,20), surv: n('pSurv',1,10), breed: n('pBreed',2,15),
+      minS: n('pMinS',0,10), maxS: n('pMaxS',1,20), minG: n('pMinG',0,50), maxG: n('pMaxG',5,120), lid: n('pLid',3,25) };
+    p.breed = Math.max(p.breed, p.surv + 1); p.minS = Math.min(p.minS, p.maxS); p.minG = Math.min(p.minG, p.maxG);
+    return p;
+  }
+  const lidR = () => Math.sqrt(P.lid / 100 * BW * BH / Math.PI);
+
+  function renderRules() {
+    $('ruleList').innerHTML = [
+      `생태계 판에 메뚜기(클립) <b>${P.g0}</b>마리를 흩어 놓고, 참새(뚜껑) <b>${P.s0}</b>마리를 왼쪽에 둔다.`,
+      `뚜껑(참새)을 던졌을 때 뚜껑 안에 들어가거나 <b>가장자리에 닿은</b> 메뚜기는 잡아먹힌 것이므로 제거한다.`,
+      `잡아먹은 메뚜기 <b>0~${P.surv - 1}</b>마리: 참새가 굶어 죽어 뚜껑을 판에서 뺀다.`,
+      `잡아먹은 메뚜기 <b>${P.surv}${P.breed - 1 > P.surv ? '~' + (P.breed - 1) : ''}</b>마리: 참새가 살아남아 뚜껑을 오른쪽으로 옮긴다.`,
+      `잡아먹은 메뚜기 <b>${P.breed}마리 이상</b>: 참새가 번식해 뚜껑 1개를 더해 함께 오른쪽으로 옮긴다.`,
+      `왼쪽에 뚜껑이 남지 않으면 오른쪽 뚜껑을 모두 왼쪽으로 가져오고, 살아남은 메뚜기 수만큼 클립을 더해 한 세대를 끝낸다.`,
+      `참새는 최소 <b>${P.minS}</b>·최대 <b>${P.maxS}</b>마리, 메뚜기는 최소 <b>${P.minG}</b>·최대 <b>${P.maxG}</b>마리를 넘어 줄거나 늘지 않는다.`
+    ].map(t => `<li>${t}</li>`).join('');
+  }
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const newClip = () => ({ x: rnd(12, BW - 12), y: rnd(12, BH - 12), a: rnd(0, Math.PI), hit: false, pop: 0 });
+
+  // 풀 무늬는 한 번만 만들어 둔다
+  const grass = Array.from({ length: 420 }, () => ({ x: Math.random() * BW, y: Math.random() * BH, h: rnd(4, 10), t: rnd(-.5, .5) }));
+  const stones = [{ x: 400, y: 70, r: 14 }, { x: 520, y: 320, r: 18 }, { x: 90, y: 360, r: 10 }];
+
+  function reset() {
+    autoStop = true;
+    P = readParams();
+    renderRules();
+    st = { gen: 1, clips: Array.from({ length: Math.min(P.g0, P.maxG) }, newClip),
+      left: Math.min(P.s0, P.maxS), right: 0, flying: null, history: [] };
+    st.history.push({ gen: 1, s: st.left, g: st.clips.length, eaten: null });
+    setRole(null);
+    $('status').textContent = '‘1세대 진행’을 누르면 참새가 차례로 사냥을 시작합니다.';
+    refresh();
+  }
+
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  function drawLid(x, y, r, color, alpha) {
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.fillStyle = color; ctx.globalAlpha = alpha * .18;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = alpha; ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.globalAlpha = alpha * .6;
+    ctx.beginPath(); ctx.arc(x, y, r * .82, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+    ctx.restore();
+  }
+  function drawClip(c, color) {
+    ctx.save(); ctx.translate(ZL + c.x, c.y); ctx.rotate(c.a);
+    const s = 1 + c.pop * .6;
+    ctx.scale(s, s);
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.roundRect(-8, -3.5, 16, 7, 3.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(5, 0); ctx.stroke();
+    ctx.restore();
+  }
+  function stackPos(i, side) {
+    const col = i % 2, row = Math.floor(i / 2), r = 22;
+    const x0 = side === 'L' ? ZL / 2 : ZL + BW + ZR / 2;
+    return { x: x0 + (col ? 26 : -26), y: 70 + row * 62, r };
+  }
+
+  function draw() {
+    const C = { field: css('--field'), dark: css('--field-dark'), zl: css('--zone-l'), zr: css('--zone-r'),
+      hop: css('--hopper'), sp: css('--sparrow'), caught: css('--caught'), fg: css('--fg'), muted: css('--muted') };
+    ctx.clearRect(0, 0, CW, BH);
+    ctx.fillStyle = C.zl; ctx.fillRect(0, 0, ZL - 6, BH);
+    ctx.fillStyle = C.zr; ctx.fillRect(ZL + BW + 6, 0, ZR - 6, BH);
+    ctx.fillStyle = C.field; ctx.fillRect(ZL, 0, BW, BH);
+    ctx.strokeStyle = C.dark; ctx.lineWidth = 1.2;
+    for (const g of grass) { ctx.beginPath(); ctx.moveTo(ZL + g.x, g.y); ctx.lineTo(ZL + g.x + g.t * 4, g.y - g.h); ctx.stroke(); }
+    ctx.fillStyle = C.dark; for (const s of stones) { ctx.beginPath(); ctx.ellipse(ZL + s.x, s.y, s.r, s.r * .6, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.font = '600 14px "IBM Plex Sans KR", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = C.fg;
+    ctx.fillText('사냥 준비', ZL / 2 - 3, 28); ctx.fillText('생존·번식', ZL + BW + ZR / 2 + 3, 28);
+    for (const c of st.clips) drawClip(c, c.hit ? C.caught : C.hop);
+    for (let i = 0; i < st.left; i++) { const p = stackPos(i, 'L'); drawLid(p.x, p.y, p.r, C.sp, 1); }
+    for (let i = 0; i < st.right; i++) { const p = stackPos(i, 'R'); drawLid(p.x, p.y, p.r, C.sp, 1); }
+    if (st.flying) { const f = st.flying; drawLid(f.x, f.y, f.r, f.dead ? C.caught : C.sp, f.alpha ?? 1); }
+  }
+
+  function refresh() {
+    $('cGen').textContent = st.gen; $('cS').textContent = st.left + st.right + (st.flying ? 1 : 0);
+    $('cG').textContent = st.clips.filter(c => !c.hit).length;
+    $('rows').innerHTML = st.history.map(h =>
+      `<tr><td>${h.gen}</td><td class="s">${h.s}</td><td class="g">${h.g}</td><td>${h.eaten ?? '–'}</td></tr>`).join('');
+    const tb = document.querySelector('.tbl'); tb.scrollTop = tb.scrollHeight;
+    drawChart(); observe(); draw();
+  }
+
+  function setRole(r) { document.querySelectorAll('.role').forEach(el => el.classList.toggle('on', el.dataset.r === r)); }
+  const speed = () => Number($('speed').value);
+  const wait = ms => new Promise(res => speed() === 0 ? res() : setTimeout(res, ms * speed()));
+  function tween(ms, fn) {
+    if (speed() === 0) { fn(1); return Promise.resolve(); }
+    return new Promise(res => {
+      const t0 = performance.now(), dur = ms * speed();
+      const tick = now => { const k = Math.min(1, (now - t0) / dur); fn(k); draw(); k < 1 ? requestAnimationFrame(tick) : res(); };
+      requestAnimationFrame(tick);
+    });
+  }
+  const ease = k => 1 - Math.pow(1 - k, 3);
+
+  async function generation() {
+    const R = lidR(), n = st.left;
+    let eatenTotal = 0, offspring = 0;
+    setRole('나'); $('status').textContent = `${st.gen}세대: 참새 ${n}마리가 차례로 사냥합니다.`; await wait(500);
+    for (let i = 0; i < n; i++) {
+      const from = stackPos(st.left - 1, 'L'); st.left--;
+      const tx = ZL + rnd(R * .5, BW - R * .5), ty = rnd(R * .5, BH - R * .5);
+      st.flying = { x: from.x, y: from.y, r: from.r };
+      setRole('가'); $('status').textContent = `가: 참새 ${i + 1}번 뚜껑을 던집니다.`;
+      await tween(650, k => { const e = ease(k); const f = st.flying;
+        f.x = from.x + (tx - from.x) * e; f.y = from.y + (ty - from.y) * e - Math.sin(k * Math.PI) * 60; f.r = from.r + (R - from.r) * e; });
+      // 클립 반쪽 길이(8)만큼 더해 가장자리에 닿은 클립도 잡힌 것으로 본다
+      const reach = R + 8;
+      const caught = st.clips.filter(c => !c.hit && (ZL + c.x - tx) ** 2 + (c.y - ty) ** 2 <= reach * reach);
+      caught.forEach(c => c.hit = true); draw();
+      const k = caught.length;
+      const kids = k >= P.breed ? 2 : k >= P.surv ? 1 : 0;
+      setRole('다');
+      $('status').textContent = kids === 0
+        ? `다: 메뚜기 ${k}마리를 잡았습니다. 참새가 굶어 죽어 뚜껑을 뺍니다.`
+        : kids === 1
+          ? `다: 메뚜기 ${k}마리를 잡았습니다. 참새가 살아남아 오른쪽으로 옮깁니다.`
+          : `다: 메뚜기 ${k}마리를 잡았습니다. 참새가 번식해 뚜껑 1개를 더해 오른쪽으로 옮깁니다.`;
+      await wait(700);
+      st.clips = st.clips.filter(c => !c.hit); eatenTotal += caught.length;
+      if (kids <= 0) {
+        st.flying.dead = true;
+        await tween(400, k => { st.flying.alpha = 1 - k; });
+      } else {
+        const to = stackPos(st.right, 'R'), f0 = { ...st.flying };
+        await tween(450, k => { const e = ease(k); const f = st.flying;
+          f.x = f0.x + (to.x - f0.x) * e; f.y = f0.y + (to.y - f0.y) * e; f.r = f0.r + (to.r - f0.r) * e; });
+        st.right += kids;
+      }
+      st.flying = null; offspring += Math.max(0, kids); refresh(); await wait(250);
+    }
+    // 메뚜기 번식
+    setRole('다');
+    const survivors = st.clips.length;
+    const next = Math.max(P.minG, Math.min(P.maxG, survivors * 2));
+    const born = Array.from({ length: Math.max(0, next - survivors) }, () => ({ ...newClip(), pop: 1 }));
+    st.clips.push(...born);
+    $('status').textContent = `다: 살아남은 메뚜기 ${survivors}마리가 번식해 ${next}마리가 됩니다.`;
+    await tween(500, k => born.forEach(c => c.pop = 1 - k));
+    // 참새 옮기기
+    const sNext = Math.max(P.minS, Math.min(P.maxS, st.right));
+    let note = '';
+    if (sNext > st.right) note = ` 참새는 최소 ${P.minS}마리 아래로 줄지 않습니다.`;
+    else if (sNext < st.right) note = ` 참새는 최대 ${P.maxS}마리를 넘지 않습니다.`;
+    st.right = 0; st.left = sNext;
+    st.history[st.history.length - 1].eaten = eatenTotal;
+    st.gen++;
+    st.history.push({ gen: st.gen, s: st.left, g: st.clips.length, eaten: null });
+    setRole('라'); $('status').textContent = `라: ${st.gen}세대 시작 — 참새 ${st.left}마리, 메뚜기 ${st.clips.length}마리를 기록했습니다.${note}`;
+    refresh(); await wait(400);
+  }
+
+  function lock(on) { busy = on; ['btnStep', 'btnApply'].forEach(id => $(id).disabled = on); $('btnAuto').textContent = on && !autoStop ? '멈추기' : '20세대 자동'; }
+
+  $('btnStep').onclick = async () => { if (busy) return; autoStop = true; lock(true); await generation(); lock(false); };
+  $('btnAuto').onclick = async () => {
+    if (busy) { autoStop = true; return; }
+    autoStop = false; lock(true);
+    for (let i = 0; i < 20 && !autoStop; i++) await generation();
+    autoStop = true; lock(false);
+  };
+  $('btnReset').onclick = () => { if (busy) { autoStop = true; return; } reset(); };
+  $('btnApply').onclick = () => { if (!busy) reset(); };
+
+  function drawChart() {
+    // 교과서 기록 양식처럼 두 개체군을 한 축(0~50)에 그린다
+    const H = st.history, w = 760, h = 300, m = { l: 40, r: 16, t: 12, b: 34 };
+    const xs = Math.max(20, H.length);
+    const yMax = Math.ceil(Math.max(P.maxG, ...H.map(d => d.g)) / 5) * 5;
+    const X = i => m.l + (i) / (xs - 1) * (w - m.l - m.r);
+    const YG = v => h - m.b - v / yMax * (h - m.t - m.b), YS = YG;
+    const ticks = Array.from({ length: yMax / 5 + 1 }, (_, i) => i * 5 / yMax);
+    let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="세대별 참새와 메뚜기 개체수 그래프" font-family="IBM Plex Mono, monospace" font-size="11">`;
+    for (const t of ticks) {
+      const y = h - m.b - t * (h - m.t - m.b);
+      s += `<line x1="${m.l}" x2="${w - m.r}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+      s += `<text x="${m.l - 6}" y="${y + 4}" text-anchor="end" fill="var(--muted)">${Math.round(t * yMax)}</text>`;
+    }
+    const step = xs > 40 ? 5 : xs > 20 ? 2 : 1;
+    for (let i = 0; i < xs; i += step) s += `<text x="${X(i)}" y="${h - m.b + 16}" text-anchor="middle" fill="var(--muted)">${i + 1}</text>`;
+    s += `<text x="${(w) / 2}" y="${h - 4}" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Sans KR, sans-serif">세대</text>`;
+    const path = (Y, k) => H.map((d, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(d[k]).toFixed(1)}`).join('');
+    if (H.length > 1) {
+      s += `<path d="${path(YG, 'g')}L${X(H.length - 1)},${h - m.b}L${m.l},${h - m.b}Z" fill="var(--hopper)" opacity=".1"/>`;
+      s += `<path d="${path(YG, 'g')}" fill="none" stroke="var(--hopper)" stroke-width="2.5" stroke-linejoin="round"/>`;
+      s += `<path d="${path(YS, 's')}" fill="none" stroke="var(--sparrow)" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="6 4"/>`;
+    }
+    H.forEach((d, i) => {
+      const last = i === H.length - 1;
+      s += `<circle cx="${X(i)}" cy="${YG(d.g)}" r="${last ? 4.5 : 2.5}" fill="var(--hopper)"/>`;
+      s += `<circle cx="${X(i)}" cy="${YS(d.s)}" r="${last ? 4.5 : 2.5}" fill="var(--sparrow)"/>`;
+    });
+    $('chart').innerHTML = s + '</svg>';
+  }
+
+  function observe() {
+    const H = st.history;
+    if (H.length < 6) { $('obs').textContent = '몇 세대를 진행하면 여기에 관찰 결과가 나타납니다.'; return; }
+    // 메뚜기가 줄어든 세대 바로 전에 참새가 늘었는지 센다
+    let up = 0, follow = 0;
+    for (let i = 1; i < H.length - 1; i++) {
+      if (H[i].s > H[i - 1].s) { up++; if (H[i + 1].g < H[i].g || H[i].g < H[i - 1].g) follow++; }
+    }
+    const gPeak = H.reduce((a, d) => d.g > a.g ? d : a), sPeak = H.reduce((a, d) => d.s > a.s ? d : a);
+    $('obs').textContent = `지금까지 ${H.length}세대: 메뚜기는 ${gPeak.gen}세대에 ${gPeak.g}마리로 가장 많았고, 참새는 ${sPeak.gen}세대에 ${sPeak.s}마리로 가장 많았습니다. ` +
+      `참새가 늘어난 ${up}번 중 ${follow}번은 메뚜기가 함께 또는 곧이어 줄었습니다. 그래프에서 두 선이 엇갈리며 오르내리는지 살펴보세요.`;
+  }
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  reset();
+})();
+</script>
+
+</body></html>
